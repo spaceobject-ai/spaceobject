@@ -6,8 +6,9 @@ import { refreshTokens, type Tokens } from "./privy.ts";
 
 // cross-keychain picks the best backend automatically: native OS keychain
 // first, encrypted file as a fallback. Entries are keyed per authenticated
-// Privy user as `account-{userId}`; the active one lives in ~/.hrld/config.json.
-const SERVICE = "hrld-cli";
+// Privy user as `account-{userId}`; the active one lives in
+// ~/.spaceobject/sun/config.json.
+const SERVICE = "spaceobject-sun";
 
 const credentialsSchema = z.object({
   accessToken: z.string(),

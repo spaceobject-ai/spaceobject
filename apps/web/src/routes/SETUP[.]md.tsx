@@ -5,7 +5,7 @@ export const Route = createFileRoute("/SETUP.md")({
     handlers: {
       GET: () =>
         Response.redirect(
-          "https://raw.githubusercontent.com/0verlabs/herald/refs/heads/main/SETUP.md",
+          "https://raw.githubusercontent.com/spaceobject-ai/spaceobject/refs/heads/main/SETUP.md",
           307,
         ),
     },

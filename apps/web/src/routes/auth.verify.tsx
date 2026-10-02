@@ -1,9 +1,9 @@
 import { PrivyProvider, usePrivy } from "@privy-io/react-auth";
 import { ClientOnly, createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { PRIVY_APP_ID, PRIVY_AUTH_ORIGIN } from "@hrld/core";
-import { Alert, AlertDescription, AlertTitle } from "@hrld/ui/components/alert";
-import { Button } from "@hrld/ui/components/button";
+import { PRIVY_APP_ID, PRIVY_AUTH_ORIGIN } from "@spaceobject/core";
+import { Alert, AlertDescription, AlertTitle } from "@spaceobject/ui/components/alert";
+import { Button } from "@spaceobject/ui/components/button";
 import {
   Card,
   CardContent,
@@ -11,8 +11,8 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@hrld/ui/components/card";
-import { Spinner } from "@hrld/ui/components/spinner";
+} from "@spaceobject/ui/components/card";
+import { Spinner } from "@spaceobject/ui/components/spinner";
 import { accountLabel } from "../lib/privy";
 
 export const Route = createFileRoute("/auth/verify")({
@@ -104,8 +104,8 @@ function AuthorizeContent(props: {
       <CardHeader>
         <CardTitle>No code found</CardTitle>
         <CardDescription>
-          Open the link shown by the Herald CLI, or restart the login with{" "}
-          <code className="font-mono">hrld auth login</code>.
+          Open the link shown by the Space Object CLI, or restart the login with{" "}
+          <code className="font-mono">sun auth login</code>.
         </CardDescription>
       </CardHeader>
     );
@@ -133,7 +133,7 @@ function AuthorizeContent(props: {
           <AlertTitle>Something went wrong</AlertTitle>
           <AlertDescription>
             The code may be invalid or expired — restart the login with{" "}
-            <code className="font-mono">hrld auth login</code>.
+            <code className="font-mono">sun auth login</code>.
           </AlertDescription>
         </Alert>
       </CardContent>
@@ -149,9 +149,9 @@ function AuthorizeContent(props: {
   return (
     <>
       <CardHeader>
-        <CardTitle>Authorize the Herald CLI</CardTitle>
+        <CardTitle>Authorize the Space Object CLI</CardTitle>
         <CardDescription>
-          A command line on another device is asking for access to your Herald account. Only
+          A command line on another device is asking for access to your Space Object account. Only
           continue if the code below matches the one shown in your terminal.
         </CardDescription>
       </CardHeader>

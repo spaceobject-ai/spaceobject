@@ -1,16 +1,16 @@
-import type { ApiClientType } from "@hrld/api/rpc";
-import { HERALD_API_URL } from "@hrld/core";
+import type { ApiClientType } from "@spaceobject/api/rpc";
+import { SPACE_OBJECT_API_URL } from "@spaceobject/core";
 import { hc } from "hono/client";
 import type { ClientResponse } from "hono/client";
 import { CliError } from "../utils/errors.ts";
 
-export const api = hc<ApiClientType>(HERALD_API_URL);
+export const api = hc<ApiClientType>(SPACE_OBJECT_API_URL);
 
 type SuccessJson<R> =
   R extends ClientResponse<infer T, infer S, "json"> ? (S extends 200 ? T : never) : never;
 
 /**
- * Unwraps a Herald API response: network failures and non-2xx statuses become
+ * Unwraps a Space Object API response: network failures and non-2xx statuses become
  * CliErrors, and a caller-supplied error replaces the generic one on 404.
  */
 export async function requestJson<R extends ClientResponse<unknown>>(
@@ -21,12 +21,15 @@ export async function requestJson<R extends ClientResponse<unknown>>(
   if (response === null)
     throw new CliError(
       "API_REQUEST_FAILED",
-      `Could not reach the Herald API at ${HERALD_API_URL}.`,
+      `Could not reach the Space Object API at ${SPACE_OBJECT_API_URL}.`,
       "Check your network connection, then run the command again.",
     );
   if (response.status === 404 && notFound) throw notFound;
   if (!response.ok)
-    throw new CliError("API_REQUEST_FAILED", `Herald API request failed: HTTP ${response.status}.`);
+    throw new CliError(
+      "API_REQUEST_FAILED",
+      `Space Object API request failed: HTTP ${response.status}.`,
+    );
 
   return response.json() as Promise<SuccessJson<R>>;
 }
@@ -37,7 +40,7 @@ export function requireOnchainAgentId(value: string): string {
     throw new CliError(
       "AGENT_ID_INVALID",
       `${value} is not an onchain agent id.`,
-      "Onchain agent ids are numeric — run `hrld agent discover <query>` to find them.",
+      "Onchain agent ids are numeric — run `sun agent discover <query>` to find them.",
     );
 
   return value;

@@ -28,7 +28,7 @@ export const agentCardSchema = z.looseObject({
   name: z.string().min(1),
   description: z.string(),
   image: z.string().optional(),
-  // Agents are active on create; `hrld agent deactivate` takes one offline
+  // Agents are active on create; `sun agent deactivate` takes one offline
   // without deleting its card. Cards written before this field existed read
   // back as active.
   active: z.boolean().prefault(true),
@@ -68,9 +68,9 @@ export function parseAgentService(input: Record<string, unknown>): AgentService 
   return result.data;
 }
 
-// Agents live locally at ~/.hrld/agents/<user_id>/<agent_id>.json as plain
+// Agents live locally at ~/.spaceobject/sun/agents/<user_id>/<agent_id>.json as plain
 // ERC-8004 agent cards; the local id is the filename, never part of the card.
-const AGENTS_DIR = path.join(os.homedir(), ".hrld", "agents");
+const AGENTS_DIR = path.join(os.homedir(), ".spaceobject", "sun", "agents");
 
 function agentPath(userId: string, agentId: string) {
   return path.join(AGENTS_DIR, userId, `${agentId}.json`);
@@ -82,7 +82,7 @@ export async function readAgentCard(userId: string, agentId: string): Promise<Ag
     throw new CliError(
       "AGENT_NOT_FOUND",
       `No local agent with id ${agentId}.`,
-      "Run `hrld agent list` to see this account's agents.",
+      "Run `sun agent list` to see this account's agents.",
     );
 
   const parsed = jsonStringSchema.safeParse(raw);

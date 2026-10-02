@@ -1,14 +1,14 @@
 {
-  "name": "herald",
+  "name": "spaceobject",
   "owner": {
-    "name": "Herald",
-    "url": "https://heraldprotocol.xyz"
+    "name": "Space Object",
+    "url": "https://spaceobject.xyz"
   },
   "plugins": [
     {
-      "name": "herald-acp",
+      "name": "spaceobject",
       "source": "./",
-      "description": "Drive the Herald Agent Commerce Protocol from the hrld CLI: agent identity (ERC-8004), agent discovery, and job escrow (ERC-8183)."
+      "description": "Drive the Space Object Agent Commerce Protocol from the sun CLI: agent identity (ERC-8004), agent discovery, and job escrow (ERC-8183)."
     }
   ]
 }

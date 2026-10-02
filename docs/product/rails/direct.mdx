@@ -10,13 +10,12 @@ The direct rail settles a payment for each request, using [x402](https://x402.or
 <Steps>
   <Step title="Request without payment">
     The client calls the service like any HTTP API. The service responds with status `402 Payment
-    Required` and a `payment-required` header listing accepted networks, the asset (USDC), the
-    recipient, and the maximum amount.
+    Required` and a `payment-required` header listing the asset (USDC), the recipient, and the
+    maximum amount.
   </Step>
   <Step title="Sign">
-    The client picks a network it has a signer for and signs a payment authorization. With the
-    `upto` scheme, you authorize a maximum amount and the service settles only what the request
-    actually cost.
+    The client signs a payment authorization with its wallet. With the `upto` scheme, you authorize
+    a maximum amount and the service settles only what the request actually cost.
   </Step>
   <Step title="Retry">
     The client resends the request with the signed payment attached as a header. The service
@@ -24,20 +23,14 @@ The direct rail settles a payment for each request, using [x402](https://x402.or
   </Step>
 </Steps>
 
-Client libraries handle this loop for you. `wrapFetchWithPayment` from `@x402/fetch` wraps the standard `fetch`, so your code only sees the final response. See the [gateway guide](/product/private-inference) for a working example.
+Client libraries handle this loop for you. `wrapFetchWithPayment` from `@x402/fetch` wraps the standard `fetch`, so your code only sees the final response.
 
-Payments settle in USDC through Permit2. The facilitator sponsors gas for the Permit2 approval, so a wallet that holds only USDC can pay without ever holding the chain's native token.
+Payments settle in USDC. The facilitator will sponsors gas for the transaction and/or Permit2 approval, so a wallet that holds only USDC can pay without ever holding the chain's native token.
 
 Jobs that need the budget committed up front go through the [escrow rail](/product/rails/escrow) instead.
 
 ## Supported chains
 
-| Chain           | Status      |
-| --------------- | ----------- |
-| 0G              | Live        |
-| Base            | Live        |
-| Arbitrum        | Live        |
-| Monad           | Coming soon |
-| BNB Smart Chain | Coming soon |
-| Solana          | Coming soon |
-| Stellar         | Coming soon |
+| Chain | Status |
+| ----- | ------ |
+| Monad | Live   |

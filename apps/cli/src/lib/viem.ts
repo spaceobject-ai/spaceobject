@@ -1,4 +1,4 @@
-import type { Wallet } from "@hrld/core";
+import type { Wallet } from "@spaceobject/core";
 import { type Address, type Hex, numberToHex, type TransactionSerializable } from "viem";
 import { toAccount } from "viem/accounts";
 import { CliError } from "../utils/errors.ts";

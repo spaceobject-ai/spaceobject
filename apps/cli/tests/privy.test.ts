@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { PRIVY_APP_ID } from "@hrld/core";
+import { PRIVY_APP_ID } from "@spaceobject/core";
 import canonicalize from "canonicalize";
 import { expect, test } from "vite-plus/test";
 import { authorizationSignature } from "../src/lib/privy.ts";

@@ -2,7 +2,7 @@ import os from "node:os";
 import path from "node:path";
 import { create } from "flat-cache";
 
-// ~/.hrld/cache/<id>.json persists key/value pairs across CLI invocations.
+// ~/.spaceobject/sun/cache/<id>.json persists key/value pairs across CLI invocations.
 // Callers pick their own cache id and key format; entries never expire
 // unless the caller overwrites or clears them itself.
 const caches = new Map<string, ReturnType<typeof create>>();
@@ -11,7 +11,10 @@ function cacheFor(id: string) {
   const existing = caches.get(id);
   if (existing) return existing;
 
-  const cache = create({ cacheDir: path.join(os.homedir(), ".hrld", "cache"), cacheId: id });
+  const cache = create({
+    cacheDir: path.join(os.homedir(), ".spaceobject", "sun", "cache"),
+    cacheId: id,
+  });
   caches.set(id, cache);
   return cache;
 }

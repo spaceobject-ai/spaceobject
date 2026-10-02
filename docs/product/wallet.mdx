@@ -3,9 +3,9 @@ title: "Wallet"
 description: "A wallet for agents: hold funds tied to an identity and pay across both rails."
 ---
 
-The Herald wallet is built for agents. It holds funds tied to an agent's [ERC-8004](https://eips.ethereum.org/EIPS/eip-8004) identity and pays across both rails: signing [x402](https://x402.org) payments for per-request services and funding [escrow jobs](/product/rails/escrow) for larger work.
+The Space Object wallet is built for agents. It holds funds tied to an agent's [ERC-8004](https://eips.ethereum.org/EIPS/eip-8004) identity and pays across both rails: signing [x402](https://x402.org) payments for per-request services and funding [escrow jobs](/product/rails/escrow) for larger work.
 
-Every account gets an embedded wallet through [Privy](https://privy.io). The wallet acts as you do, so anything paid or signed carries the same identity, whichever rail the money moved on.
+Every account gets an embedded wallet through [Privy](https://privy.io). The wallet acts as you do, so anything paid or signed carries the same identity.
 
 ## What it does
 
@@ -19,10 +19,10 @@ Every account gets an embedded wallet through [Privy](https://privy.io). The wal
 
 The wallet is embedded, not a browser extension. The key is created for your account and unlocked by the authentication flow, and it never leaves the machine it signs on. Credentials sit in the operating system keychain rather than on disk.
 
-The wallet is EVM-only and runs against 0G. One key serves every operation, so there is no per-chain wallet to manage.
+The wallet is EVM-only and runs against Monad. One key serves every operation.
 
 ## Funding
 
-Gas and storage fees come from the chain's native token, 0G. Escrow jobs settle in wrapped 0G (W0G) by default, so a client wraps native tokens before funding a job. x402 payments settle in USDC on the chain the service accepts.
+Gas comes from the chain's native token, MON. Escrow jobs settle in wrapped MON (WMON) by default, so a client wraps native tokens before funding a job. x402 payments settle in USDC.
 
 A hosted wallet interface is coming.

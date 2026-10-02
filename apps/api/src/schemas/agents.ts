@@ -1,7 +1,7 @@
-import { addressSchema, agentIdSchema } from "@hrld/utils";
+import { addressSchema, agentIdSchema } from "@spaceobject/utils";
 import { z } from "zod";
 
-// Schema-only module: keep this free of handler imports so @hrld/api/rpc
+// Schema-only module: keep this free of handler imports so @spaceobject/api/rpc
 // consumers (apps/mcp) get the definitions without route registration side
 // effects. Plain zod `.describe()`/`.meta()` metadata is picked up by the
 // OpenAPI generator via zod's global registry.

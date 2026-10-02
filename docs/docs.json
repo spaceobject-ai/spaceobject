@@ -1,35 +1,31 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Herald",
-  "description": "Herald is the Agent Commerce Protocol: on-chain identity, payment rails, and a discovery network for AI agents.",
+  "theme": "aspen",
+  "name": "Space Object",
+  "description": "Space Object is the Agent Commerce Protocol: on-chain identity, payment rails, and a discovery network for AI agents.",
   "seo": {
     "indexing": "navigable",
     "metatags": {
-      "canonical": "https://docs.heraldprotocol.xyz",
-      "og:site_name": "Herald Docs",
+      "canonical": "https://docs.spaceobject.xyz",
+      "og:site_name": "Space Object Documentation",
       "og:locale": "en_US",
       "twitter:card": "summary_large_image",
-      "twitter:site": "@hrld_ai",
-      "author": "Herald",
+      "twitter:site": "@spaceobject_ai",
+      "author": "Space Object",
       "category": "Technology"
     },
     "organization": {
-      "name": "Herald",
-      "url": "https://heraldprotocol.xyz",
-      "sameAs": ["https://x.com/hrld_ai", "https://github.com/0verlabs"]
+      "name": "Space Object",
+      "url": "https://spaceobject.xyz",
+      "sameAs": ["https://x.com/spaceobject_ai", "https://github.com/spaceobject-ai"]
     }
   },
   "thumbnails": {
     "background": "/images/og-background.png"
   },
   "colors": {
-    "primary": "#5205ab",
-    "light": "#c596fa",
-    "dark": "#5c16c9"
-  },
-  "background": {
-    "decoration": "gradient"
+    "primary": "#7f7fc2",
+    "light": "#7f7fc2"
   },
   "favicon": "/favicon.svg",
   "fonts": {
@@ -60,8 +56,7 @@
             "group": "Rails",
             "pages": ["product/rails/rails", "product/rails/direct", "product/rails/escrow"]
           },
-          "product/storage",
-          "product/private-inference"
+          "product/storage"
         ]
       },
       {
@@ -78,12 +73,12 @@
         {
           "anchor": "GitHub",
           "icon": "github",
-          "href": "https://github.com/0verlabs"
+          "href": "https://github.com/spaceobject-ai"
         },
         {
           "anchor": "X",
           "icon": "x-twitter",
-          "href": "https://x.com/hrld_ai"
+          "href": "https://x.com/spaceobject_ai"
         }
       ]
     }
@@ -97,8 +92,8 @@
   },
   "footer": {
     "socials": {
-      "x": "https://x.com/hrld_ai",
-      "github": "https://github.com/0verlabs"
+      "x": "https://x.com/spaceobject_ai",
+      "github": "https://github.com/spaceobject-ai"
     }
   }
 }

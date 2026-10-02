@@ -4,9 +4,9 @@ import {
   reputationRegistryByChain,
   viemChainByChain,
   type Wallet,
-} from "@hrld/core";
-import { erc8004ReputationRegistryAbi } from "@hrld/core/abis/erc8004";
-import { erc8183AgenticCommerceAbi } from "@hrld/core/abis/erc8183";
+} from "@spaceobject/core";
+import { erc8004ReputationRegistryAbi } from "@spaceobject/core/abis/erc8004";
+import { erc8183AgenticCommerceAbi } from "@spaceobject/core/abis/erc8183";
 import pc from "picocolors";
 import {
   type Address,
@@ -99,7 +99,7 @@ const give = zodCommand({
           ["Tx", pc.cyan(result.txHash)],
         ]),
         "",
-        pc.dim(`Run \`hrld agent feedback list ${result.agentId}\` to see it once indexed.`),
+        pc.dim(`Run \`sun agent feedback list ${result.agentId}\` to see it once indexed.`),
       ].join("\n"),
       result,
     )(json);
@@ -190,7 +190,7 @@ async function giveFeedback(
     throw new CliError(
       "FEEDBACK_ACTION_FAILED",
       "The giveFeedback transaction confirmed but emitted no NewFeedback event.",
-      `Inspect transaction ${txHash}, then check \`hrld agent feedback list ${agentId}\`.`,
+      `Inspect transaction ${txHash}, then check \`sun agent feedback list ${agentId}\`.`,
     );
 
   return { dryRun: false as const, ...shared, feedbackIndex: Number(feedbackIndex), txHash };
@@ -234,7 +234,7 @@ async function requireSettledJobAsClient(
     throw new CliError(
       "FEEDBACK_ACTION_FAILED",
       `Job #${jobId} is not settled yet.`,
-      `Complete or reject it first: hrld agent job complete ${jobId}`,
+      `Complete or reject it first: sun agent job complete ${jobId}`,
     );
 }
 
@@ -359,7 +359,7 @@ const revoke = zodCommand({
       .number()
       .int()
       .positive()
-      .describe("Per-client feedback index from `hrld agent feedback list`"),
+      .describe("Per-client feedback index from `sun agent feedback list`"),
   },
   action: async (args) => {
     const json = isJson(revoke);
@@ -421,7 +421,7 @@ const respond = zodCommand({
       .number()
       .int()
       .positive()
-      .describe("Per-client feedback index from `hrld agent feedback list`"),
+      .describe("Per-client feedback index from `sun agent feedback list`"),
   },
   opts: {
     data: jsonStringSchema.optional().describe("d;Response document as a JSON string"),
@@ -507,7 +507,7 @@ async function requireFeedback(chain: EvmChain, agentId: bigint, client: Address
       lastIndex === 0n
         ? `${client} has given agent #${agentId} no feedback.`
         : `${client} has feedback indexes 1 to ${lastIndex} on agent #${agentId}, not ${index}.`,
-      `Run \`hrld agent feedback list ${agentId}\` to see feedback indexes.`,
+      `Run \`sun agent feedback list ${agentId}\` to see feedback indexes.`,
     );
 
   const [, , , , isRevoked] = await publicClient(chain).readContract({
@@ -529,7 +529,7 @@ function agentNotFound(agentId: string): CliError {
   return new CliError(
     "AGENT_NOT_FOUND",
     `No onchain agent with id ${agentId}.`,
-    "Run `hrld agent discover <query>` to find onchain agents.",
+    "Run `sun agent discover <query>` to find onchain agents.",
   );
 }
 

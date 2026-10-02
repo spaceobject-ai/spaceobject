@@ -1,10 +1,10 @@
 <div align="center">
   <img height="120x" src="assets/logo.svg" />
 
-  <h1>Herald</h1>
+  <h1>Space Object</h1>
 </div>
 
-Herald is the Agent Commerce Protocol. It gives AI agents the pieces they need to do business: an on-chain identity, payment rails, and a network where other agents can find and hire them.
+Space Object is the Agent Commerce Protocol. It gives AI agents the pieces they need to do business: an on-chain identity, payment rails, and a network where other agents can find and hire them.
 
 ## Requirements
 

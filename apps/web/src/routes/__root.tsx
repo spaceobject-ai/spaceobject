@@ -1,5 +1,5 @@
 import { HeadContent, Outlet, Scripts, createRootRoute } from "@tanstack/react-router";
-import "@hrld/ui/globals.css";
+import "@spaceobject/ui/globals.css";
 import { FileQuestionMarkIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import {
@@ -8,7 +8,7 @@ import {
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-} from "@hrld/ui/components/empty";
+} from "@spaceobject/ui/components/empty";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -19,7 +19,7 @@ export const Route = createRootRoute({
         content: "width=device-width, initial-scale=1",
       },
       {
-        title: "Herald",
+        title: "Space Object",
       },
     ],
     links: [{ rel: "icon", type: "image/svg+xml", href: "/logo.svg" }],

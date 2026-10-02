@@ -1,6 +1,6 @@
 import { StreamableHTTPTransport } from "@hono/mcp";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { ApiClientType } from "@hrld/api/rpc";
+import { ApiClientType } from "@spaceobject/api/rpc";
 import { Hono } from "hono";
 import { hc } from "hono/client";
 import { logger } from "hono/logger";
@@ -29,7 +29,7 @@ app
     return next();
   })
   .all("/", async (c) => {
-    const server = new McpServer({ name: "herald", version: "0.1.0" });
+    const server = new McpServer({ name: "spaceobject", version: "0.1.0" });
 
     const apiClient = c.get("apiClient");
 

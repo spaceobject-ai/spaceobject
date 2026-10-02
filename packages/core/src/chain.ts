@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const evmChains = ["0g"] as const;
+export const evmChains = ["monad"] as const;
 export const evmChainSchema = z.enum(evmChains);
 export type EvmChain = z.infer<typeof evmChainSchema>;
 
@@ -15,5 +15,5 @@ export const chainSchema = z.enum(chains);
 export type Chain = z.infer<typeof chainSchema>;
 
 export const EVM_CHAIN_IDS = {
-  "0g": 16661,
+  monad: 143,
 } as const satisfies Record<EvmChain, number>;

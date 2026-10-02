@@ -2,7 +2,7 @@
 # the deployed subgraph errors at the store level when the field is null. All
 # queries filter on registration_not: null, and single-agent queries use the
 # list field with an id filter so agents without a registration return [].
-# Herald agents keep their whole card onchain as a data: URI, so every query
+# Space Object agents keep their whole card onchain as a data: URI, so every query
 # also filters on agentURIKind: DATA — agents hosted elsewhere are invisible
 # to the API. Burned agent NFTs are likewise invisible: every query filters on
 # isBurned: false, so single-agent routes 404 for them. The list and search

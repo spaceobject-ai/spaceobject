@@ -4,7 +4,7 @@ import pkg from "../package.json" with { type: "json" };
 export function createProgram() {
   return (
     new Command()
-      .name("hrld")
+      .name("sun")
       .description(pkg.description)
       .version(pkg.version)
       // Options after a subcommand belong to the subcommand: without this the

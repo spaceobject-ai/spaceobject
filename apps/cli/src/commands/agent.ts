@@ -1,12 +1,12 @@
 import fs from "node:fs/promises";
-import { type EvmChain, viemChainByChain, type Wallet } from "@hrld/core";
-import { erc8004IdentityRegistryAbi } from "@hrld/core/abis/erc8004";
+import { type EvmChain, viemChainByChain, type Wallet } from "@spaceobject/core";
+import { erc8004IdentityRegistryAbi } from "@spaceobject/core/abis/erc8004";
 import pc from "picocolors";
 import { v4 as uuidv4 } from "uuid";
 import { createPublicClient, createWalletClient, http, parseEventLogs } from "viem";
 import { z } from "zod";
 import { zodCommand } from "zod-commander";
-import { identityRegistryByChain } from "@hrld/core";
+import { identityRegistryByChain } from "@spaceobject/core";
 import {
   type AgentCard,
   type AgentService,
@@ -51,7 +51,7 @@ const list = zodCommand({
     const result = await listAgents().catch((error: Error) => error);
     if (result instanceof Error) return err(result)(json);
     if (result.agents.length === 0)
-      return ok(pc.dim("No agents yet. Run `hrld agent create`."), result)(json);
+      return ok(pc.dim("No agents yet. Run `sun agent create`."), result)(json);
 
     const nameWidth = Math.max(
       ...result.agents.map((agent) => truncate(agent.card.name, 24).length),
@@ -244,7 +244,7 @@ const profile = zodCommand({
             ],
           ]),
           ...(result.reputation.count > 0
-            ? ["", pc.dim(`Run \`hrld agent feedback list ${result.id}\` to read the feedback.`)]
+            ? ["", pc.dim(`Run \`sun agent feedback list ${result.id}\` to read the feedback.`)]
             : []),
         ].join("\n"),
         result,
@@ -271,7 +271,7 @@ const profile = zodCommand({
               (registration) =>
                 `  #${registration.agentId} on ${pc.cyan(registration.agentRegistry)}`,
             )
-          : [pc.dim("  none — run `hrld agent push <agentId>`")]),
+          : [pc.dim("  none — run `sun agent push <agentId>`")]),
         "",
         pc.dim("Services"),
         ...(result.card.services.length > 0
@@ -305,7 +305,7 @@ function acpAgentNotFound(agentId: string): CliError {
   return new CliError(
     "AGENT_NOT_FOUND",
     `No onchain agent with id ${agentId}.`,
-    "Run `hrld agent discover <query>` to find onchain agents.",
+    "Run `sun agent discover <query>` to find onchain agents.",
   );
 }
 
@@ -461,7 +461,7 @@ const deactivate = zodCommand({
           ["Name", pc.bold(result.card.name)],
           ["Status", statusLabel(result.card)],
         ]),
-        pc.dim("Run `hrld agent push <agentId>` to publish the change onchain."),
+        pc.dim("Run `sun agent push <agentId>` to publish the change onchain."),
       ].join("\n"),
       result,
     )(json);
@@ -519,7 +519,7 @@ const serviceList = zodCommand({
     if (result.services.length === 0)
       return ok(
         pc.dim(
-          "No services yet. Run `hrld agent service add <agentId> --name <name> --endpoint <uri>`.",
+          "No services yet. Run `sun agent service add <agentId> --name <name> --endpoint <uri>`.",
         ),
         result,
       )(json);
@@ -604,7 +604,7 @@ const serviceUpdate = zodCommand({
       .number()
       .int()
       .nonnegative()
-      .describe("Service index from `hrld agent service list`"),
+      .describe("Service index from `sun agent service list`"),
   },
   opts: {
     name: z.string().optional().describe("n;Service name"),
@@ -661,7 +661,7 @@ const serviceRemove = zodCommand({
       .number()
       .int()
       .nonnegative()
-      .describe("Service index from `hrld agent service list`"),
+      .describe("Service index from `sun agent service list`"),
   },
   action: async (args) => {
     const json = isJson(serviceRemove);
@@ -691,7 +691,7 @@ function requireService(card: AgentCard, agentId: string, index: number): AgentS
     throw new CliError(
       "AGENT_SERVICE_NOT_FOUND",
       `Agent ${agentId} has no service at index ${index}.`,
-      "Run `hrld agent service list <agentId>` to see service indexes.",
+      "Run `sun agent service list <agentId>` to see service indexes.",
     );
 
   return service;
@@ -869,7 +869,7 @@ async function registerAgent(
     throw new CliError(
       "AGENT_SYNC_FAILED",
       "The register transaction confirmed but emitted no Registered event.",
-      `Inspect transaction ${txHash}, then re-run \`hrld agent push\`.`,
+      `Inspect transaction ${txHash}, then re-run \`sun agent push\`.`,
     );
 
   return { registration: { agentId: Number(onchainAgentId), agentRegistry }, txHash };

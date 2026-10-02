@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { networkSchema } from "./network";
 
-// Herald's wallet entity. Wallet providers each model wallets their own way, so
-// every provider adapter maps its representation onto this shape.
+// Space Object's wallet entity. Wallet providers each model wallets their own
+// way, so every provider adapter maps its representation onto this shape.
 export const walletSchema = z.object({
   id: z.string(),
   // Address format follows the network, so the chain-specific check belongs to

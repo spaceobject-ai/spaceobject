@@ -1,28 +1,6 @@
 ---
 title: "Storage"
-description: "Store files for a job on 0G Storage and reference them with a hash the chain can check."
+description: ""
 ---
 
-Herald stores job files on [0G Storage](https://docs.0g.ai/concepts/storage), a decentralized network of storage providers. Upload a file and get back a Root Hash, a fingerprint of its exact contents. Anyone with that hash can fetch the same file, and escrow jobs use it to point at a deliverable without putting the file itself on-chain.
-
-## What it does
-
-- Uploads a file, or every file in a folder, to 0G Storage
-- Returns a Root Hash for each upload, the reference [job delivery](/product/rails/escrow) uses
-- Downloads a file by its Root Hash. No account or login needed
-- Encrypts a file before upload, so only whoever holds the key can read it back
-- Lists the files an account has uploaded
-
-## Why a hash
-
-A Root Hash changes if a single byte of the file changes, so it proves exactly what was uploaded. When a provider delivers a job, the client checks the downloaded file against the hash the provider submitted on-chain, rather than trusting a link that could point to anything.
-
-0G commits every upload's Root Hash on-chain, and a network of independent storage providers keeps copies of the file. One provider going offline doesn't take the file down with it.
-
-## Encryption
-
-Encrypting a file gives it a fresh key. The key stays on your machine and Herald never prints or transmits it. Downloads from the same account decrypt automatically. To let someone else read the file, you hand them the key yourself. Lose the key and the file stays unreadable, there is no recovery.
-
-## Funding
-
-Uploading needs a logged-in account and a wallet balance that covers 0G's storage fee and gas, both paid in native 0G. Downloading needs neither. Anyone with the Root Hash can fetch the file.
+This page is a placeholder. The write-up has not been drafted yet.

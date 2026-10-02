@@ -1,4 +1,4 @@
-import { type Chain, networkByChain, type Wallet } from "@hrld/core";
+import { type Chain, networkByChain, type Wallet } from "@spaceobject/core";
 import { getValidAccessToken } from "./credentials.ts";
 import { decodeAccessTokenClaims } from "./jwt.ts";
 import { openWalletSession, type WalletSession } from "./privy.ts";
@@ -6,7 +6,7 @@ import { CliError } from "../utils/errors.ts";
 
 export async function requireAccessToken(): Promise<string> {
   const accessToken = await getValidAccessToken();
-  if (!accessToken) throw new CliError("NOT_LOGGED_IN", "Not logged in.", "Run `hrld auth login`.");
+  if (!accessToken) throw new CliError("NOT_LOGGED_IN", "Not logged in.", "Run `sun auth login`.");
 
   return accessToken;
 }
@@ -22,7 +22,7 @@ export function requireWallet(session: WalletSession, chain: Chain): Wallet {
     throw new CliError(
       "WALLET_NOT_FOUND",
       `This account has no ${network} embedded wallet.`,
-      "Create one by signing in to the Herald app, then run this command again.",
+      "Create one by signing in to the Space Object app, then run this command again.",
     );
 
   return wallet;

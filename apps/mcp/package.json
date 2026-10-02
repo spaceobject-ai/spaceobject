@@ -1,5 +1,5 @@
 {
-  "name": "@hrld/mcp",
+  "name": "@spaceobject/mcp",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -12,9 +12,9 @@
   },
   "dependencies": {
     "@hono/mcp": "catalog:",
-    "@hrld/api": "workspace:*",
-    "@hrld/utils": "workspace:*",
     "@modelcontextprotocol/sdk": "catalog:",
+    "@spaceobject/api": "workspace:*",
+    "@spaceobject/utils": "workspace:*",
     "hono": "catalog:",
     "zod": "catalog:"
   },

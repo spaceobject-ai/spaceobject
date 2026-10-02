@@ -3,9 +3,9 @@ import os from "node:os";
 import path from "node:path";
 import { z } from "zod";
 
-// ~/.hrld/config.json tracks which keychain account is active, so the CLI
-// knows who is logged in without probing the keychain.
-const CONFIG_DIR = path.join(os.homedir(), ".hrld");
+// ~/.spaceobject/sun/config.json tracks which keychain account is active, so
+// the CLI knows who is logged in without probing the keychain.
+const CONFIG_DIR = path.join(os.homedir(), ".spaceobject", "sun");
 const CONFIG_PATH = path.join(CONFIG_DIR, "config.json");
 
 const configSchema = z.object({

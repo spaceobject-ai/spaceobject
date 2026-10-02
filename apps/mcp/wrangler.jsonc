@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "herald-mcp",
+  "name": "spaceobject-mcp",
   "main": "src/index.ts",
   "compatibility_date": "2026-09-10",
   "compatibility_flags": ["nodejs_compat"],
@@ -9,14 +9,14 @@
     "head_sampling_rate": 0.1,
   },
   "vars": {
-    "BASE_API_URL": "https://herald-api.luckzivanius.workers.dev",
+    "BASE_API_URL": "https://spaceobject-api.luckzivanius.workers.dev",
   },
   // Worker-to-Worker fetch on the same zone fails with error 1042, so the API
   // is reached through a service binding instead of its public URL.
   "services": [
     {
       "binding": "API",
-      "service": "herald-api",
+      "service": "spaceobject-api",
     },
   ],
 }

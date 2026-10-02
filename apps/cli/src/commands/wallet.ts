@@ -1,5 +1,5 @@
-import { type EvmChain, viemChainByChain, WRAPPED_NATIVE_TOKEN } from "@hrld/core";
-import { weth9Abi } from "@hrld/core/abis/weth9";
+import { type EvmChain, viemChainByChain, WRAPPED_NATIVE_TOKEN } from "@spaceobject/core";
+import { weth9Abi } from "@spaceobject/core/abis/weth9";
 import pc from "picocolors";
 import {
   createPublicClient,
@@ -386,7 +386,7 @@ async function transferTokens(
 
 const evmWrap = zodCommand({
   name: "wrap",
-  description: "Wrap native tokens into the wrapped native token (W0G)",
+  description: "Wrap native tokens into the wrapped native token (WMON)",
   args: {
     amount: z.string().describe("Amount in native units, e.g. 1.5"),
   },
@@ -409,7 +409,7 @@ const evmWrap = zodCommand({
 
 const evmUnwrap = zodCommand({
   name: "unwrap",
-  description: "Unwrap wrapped native tokens (W0G) back into native tokens",
+  description: "Unwrap wrapped native tokens (WMON) back into native tokens",
   args: {
     amount: z.string().describe("Amount in native units, e.g. 1.5"),
   },

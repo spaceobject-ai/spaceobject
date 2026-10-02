@@ -4,8 +4,8 @@ import {
   viemChainByChain,
   type Wallet,
   WRAPPED_NATIVE_TOKEN,
-} from "@hrld/core";
-import { erc8183AgenticCommerceAbi } from "@hrld/core/abis/erc8183";
+} from "@spaceobject/core";
+import { erc8183AgenticCommerceAbi } from "@spaceobject/core/abis/erc8183";
 import pc from "picocolors";
 import {
   type Address,
@@ -248,7 +248,7 @@ const create = zodCommand({
           ["Tx", pc.cyan(result.txHash)],
         ]),
         "",
-        pc.dim(`Next: the provider prices it — hrld agent job set-budget ${result.jobId} <budget>`),
+        pc.dim(`Next: the provider prices it — sun agent job set-budget ${result.jobId} <budget>`),
       ].join("\n"),
       result,
     )(json);
@@ -267,7 +267,7 @@ async function createJob(
     new CliError(
       "AGENT_NOT_FOUND",
       `No onchain agent with id ${agentId}.`,
-      "Run `hrld agent discover <query>` to find onchain agents.",
+      "Run `sun agent discover <query>` to find onchain agents.",
     ),
   );
 
@@ -316,7 +316,7 @@ async function createJob(
     throw new CliError(
       "JOB_ACTION_FAILED",
       "The createJob transaction confirmed but emitted no JobCreated event.",
-      `Inspect transaction ${txHash}, then check \`hrld agent job list\`.`,
+      `Inspect transaction ${txHash}, then check \`sun agent job list\`.`,
     );
 
   return {
@@ -352,7 +352,7 @@ const setBudget = zodCommand({
     token: z
       .string()
       .optional()
-      .describe("t;Payment token address (must be whitelisted); omit for wrapped native (W0G)"),
+      .describe("t;Payment token address (must be whitelisted); omit for wrapped native (WMON)"),
     "as-unit": z.boolean().prefault(false).describe("Treat <budget> as raw base units"),
   },
   action: async (args, opts) => {
@@ -379,7 +379,7 @@ const setBudget = zodCommand({
           ["Tx", pc.cyan(result.txHash)],
         ]),
         "",
-        pc.dim(`Next: the client escrows it — hrld agent job fund ${result.jobId}`),
+        pc.dim(`Next: the client escrows it — sun agent job fund ${result.jobId}`),
       ].join("\n"),
       result,
     )(json);
@@ -470,7 +470,7 @@ const fund = zodCommand({
           ["Fund Tx", pc.cyan(result.txHash)],
         ]),
         "",
-        pc.dim("Next: the provider works and delivers — hrld agent job deliver <jobId> <fileHash>"),
+        pc.dim("Next: the provider works and delivers — sun agent job deliver <jobId> <fileHash>"),
       ].join("\n"),
       result,
     )(json);
@@ -489,7 +489,7 @@ async function fundJob(chain: EvmChain, jobId: string, json: boolean) {
     throw new CliError(
       "JOB_ACTION_FAILED",
       `Job #${jobId} has no budget yet.`,
-      `The provider sets it first: hrld agent job set-budget ${jobId} <budget>`,
+      `The provider sets it first: sun agent job set-budget ${jobId} <budget>`,
     );
 
   const session = await openSession();
@@ -557,8 +557,8 @@ async function approveBudget(
     throw new CliError(
       "JOB_ACTION_FAILED",
       `This wallet holds ${formatTokenAmount(balance, metadata)} but the budget is ${formatTokenAmount(budget, metadata)}.`,
-      metadata?.symbol === "W0G"
-        ? "Wrap more native tokens with `hrld wallet evm wrap <amount>`."
+      metadata?.symbol === "WMON"
+        ? "Wrap more native tokens with `sun wallet evm wrap <amount>`."
         : undefined,
     );
   if (allowance >= budget) return null;
@@ -581,7 +581,7 @@ const deliver = zodCommand({
   description: "Submit a deliverable for a funded job as its provider",
   args: {
     jobId: z.string().describe("Onchain job id"),
-    fileHash: z.string().describe("Root hash of the uploaded deliverable (hrld storage upload)"),
+    fileHash: z.string().describe("32-byte content hash committing to the deliverable"),
   },
   action: async (args) => {
     const json = isJson(deliver);
@@ -601,7 +601,7 @@ const deliver = zodCommand({
         ]),
         "",
         pc.dim(
-          `Next: the client evaluates it — hrld agent job complete ${result.jobId} (or reject)`,
+          `Next: the client evaluates it — sun agent job complete ${result.jobId} (or reject)`,
         ),
       ].join("\n"),
       result,
@@ -614,7 +614,7 @@ async function deliverJob(chain: EvmChain, jobId: string, fileHash: string, json
     throw new CliError(
       "JOB_INPUT_INVALID",
       `${fileHash} is not a 32-byte hash.`,
-      "Upload the deliverable with `hrld storage upload <path>` and pass its Root Hash.",
+      "Pass the 32-byte content hash of the deliverable, e.g. its merkle root.",
     );
 
   progress(json, `Submitting deliverable for job #${jobId}…`);
@@ -805,7 +805,7 @@ async function readJob(chain: EvmChain, jobId: bigint) {
     throw new CliError(
       "JOB_NOT_FOUND",
       `No onchain job with id ${jobId}.`,
-      "Run `hrld agent job list` to see this account's jobs.",
+      "Run `sun agent job list` to see this account's jobs.",
     );
 
   return job;

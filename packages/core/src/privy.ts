@@ -14,7 +14,7 @@ export const PRIVY_OAUTH_PATH = "/api/oauth/v2";
 export const PRIVY_GRANT_TYPE_DEVICE_CODE = "device_code";
 
 // Privy issues one embedded wallet per chain type, which is its name for what
-// Herald calls a network.
+// Space Object calls a network.
 export const privyChainTypes = ["ethereum", "solana"] as const;
 export const privyChainTypeSchema = z.enum(privyChainTypes);
 export type PrivyChainType = z.infer<typeof privyChainTypeSchema>;
@@ -27,15 +27,15 @@ export const networkByPrivyChainType = {
 export const privyWalletSchema = z.object({
   id: z.string(),
   address: z.string(),
-  // Privy supports chain types Herald does not model, so this stays a plain
-  // string and unsupported wallets drop out during mapping.
+  // Privy supports chain types Space Object does not model, so this stays a
+  // plain string and unsupported wallets drop out during mapping.
   chain_type: z.string(),
 });
 
 export type PrivyWallet = z.infer<typeof privyWalletSchema>;
 
-// Returns null for chain types outside Herald's domain, such as Privy's Tron or
-// XRPL wallets.
+// Returns null for chain types outside Space Object's domain, such as Privy's
+// Tron or XRPL wallets.
 export function toWallet(wallet: PrivyWallet): Wallet | null {
   const chainType = privyChainTypeSchema.safeParse(wallet.chain_type);
   if (!chainType.success) return null;

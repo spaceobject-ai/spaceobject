@@ -1,5 +1,5 @@
 {
-  "name": "@hrld/web",
+  "name": "@spaceobject/web",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -10,9 +10,9 @@
     "preview": "vp preview"
   },
   "dependencies": {
-    "@hrld/core": "workspace:*",
-    "@hrld/ui": "workspace:*",
     "@privy-io/react-auth": "^3.45.0",
+    "@spaceobject/core": "workspace:*",
+    "@spaceobject/ui": "workspace:*",
     "@tanstack/react-router": "^1.170.32",
     "@tanstack/react-start": "^1.168.49",
     "lucide-react": "^0.577.0",

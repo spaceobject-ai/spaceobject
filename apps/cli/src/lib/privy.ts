@@ -6,7 +6,7 @@ import {
   PRIVY_OAUTH_PATH,
   privyWalletSchema,
   toWallet,
-} from "@hrld/core";
+} from "@spaceobject/core";
 import canonicalize from "canonicalize";
 import { z } from "zod";
 import { CliError } from "../utils/errors.ts";
@@ -52,7 +52,7 @@ export async function requestDeviceAuthorization() {
     throw new CliError(
       "DEVICE_AUTH_FAILED",
       `Device authorization failed: HTTP ${res.status}`,
-      "Check your network, then run `hrld auth login` again.",
+      "Check your network, then run `sun auth login` again.",
     );
 
   return deviceAuthorizationSchema.parse(await res.json());
@@ -122,19 +122,19 @@ function toTokenError(result: { error?: string; status: number }): Error {
     return new CliError(
       "DEVICE_CODE_EXPIRED",
       "The device code expired.",
-      "Run `hrld auth login` to get a new code.",
+      "Run `sun auth login` to get a new code.",
     );
   if (result.error === "access_denied")
     return new CliError(
       "AUTH_DENIED",
       "Authorization was denied in the browser.",
-      "Run `hrld auth login` again and approve it in the browser.",
+      "Run `sun auth login` again and approve it in the browser.",
     );
 
   return new CliError(
     "TOKEN_REQUEST_FAILED",
     `Token request failed: HTTP ${result.status}`,
-    "Run the command again, or start over with `hrld auth login`.",
+    "Run the command again, or start over with `sun auth login`.",
   );
 }
 
@@ -149,7 +149,7 @@ export async function refreshTokens(refreshToken: string): Promise<Tokens> {
     throw new CliError(
       "SESSION_EXPIRED",
       "Session expired or revoked.",
-      "Run `hrld auth login` to log in again.",
+      "Run `sun auth login` to log in again.",
     );
 
   return tokensSchema.parse(await res.json());
@@ -181,13 +181,13 @@ export async function openWalletSession(accessToken: string) {
     throw new CliError(
       "SESSION_EXPIRED",
       "Session expired or revoked.",
-      "Run `hrld auth login` to log in again.",
+      "Run `sun auth login` to log in again.",
     );
   if (!res.ok)
     throw new CliError(
       "WALLET_AUTH_FAILED",
       `Wallet authorization failed: HTTP ${res.status}`,
-      "Run the command again, or start over with `hrld auth login`.",
+      "Run the command again, or start over with `sun auth login`.",
     );
 
   const body = authenticateWalletsSchema.parse(await res.json());
@@ -233,13 +233,13 @@ export async function walletRpc(session: WalletSession, walletId: string, body: 
     throw new CliError(
       "WALLET_NOT_ACCESSIBLE",
       "That wallet does not belong to the authenticated account.",
-      "Run `hrld auth whoami` to check who is logged in.",
+      "Run `sun auth whoami` to check who is logged in.",
     );
   if (!res.ok)
     throw new CliError(
       "WALLET_RPC_FAILED",
       `Wallet request failed: HTTP ${res.status} ${await res.text()}`,
-      "Run the command again, or start over with `hrld auth login`.",
+      "Run the command again, or start over with `sun auth login`.",
     );
 
   return res.json();

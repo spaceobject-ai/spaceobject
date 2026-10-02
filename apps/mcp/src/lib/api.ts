@@ -1,4 +1,4 @@
 import { hc } from "hono/client";
-import { ApiClientType } from "@hrld/api/rpc";
+import { ApiClientType } from "@spaceobject/api/rpc";
 
 export type ApiClient = ReturnType<typeof hc<ApiClientType>>;

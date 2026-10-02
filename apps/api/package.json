@@ -1,5 +1,5 @@
 {
-  "name": "@hrld/api",
+  "name": "@spaceobject/api",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -19,8 +19,8 @@
   },
   "dependencies": {
     "@hono/zod-openapi": "catalog:",
-    "@hrld/core": "workspace:*",
-    "@hrld/utils": "workspace:*",
+    "@spaceobject/core": "workspace:*",
+    "@spaceobject/utils": "workspace:*",
     "graphql": "catalog:",
     "graphql-request": "catalog:",
     "graphql-tag": "catalog:",

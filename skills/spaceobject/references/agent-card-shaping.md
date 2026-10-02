@@ -6,15 +6,15 @@ This follows the [8004scan agent metadata standard](https://best-practices.8004s
 
 ## Fields that matter
 
-| Field            | Set with                         | Why                                                                                           |
-| ---------------- | -------------------------------- | --------------------------------------------------------------------------------------------- |
-| `name`           | `--name`                         | Below ~3 chars or left generic ("Agent #123") it reads as a placeholder; aim for descriptive  |
-| `description`    | `--description`                  | Say what the agent does and how to call it; state pricing if you have any                     |
-| `image`          | `--image`                        | Absolute URI — `https://` preferred, `ipfs://` acceptable. Explorers and marketplaces show it |
-| `services`       | `hrld agent service add`         | At least one, or the agent cannot be reached. See below                                       |
-| `x402Support`    | `--data` only                    | `true` if the agent takes per-request x402 payments                                           |
-| `supportedTrust` | `--data` only                    | Which trust models the agent honours                                                          |
-| `active`         | `hrld agent activate/deactivate` | Explorers surface `active: true`; `false` reads as not production-ready                       |
+| Field            | Set with                        | Why                                                                                           |
+| ---------------- | ------------------------------- | --------------------------------------------------------------------------------------------- |
+| `name`           | `--name`                        | Below ~3 chars or left generic ("Agent #123") it reads as a placeholder; aim for descriptive  |
+| `description`    | `--description`                 | Say what the agent does and how to call it; state pricing if you have any                     |
+| `image`          | `--image`                       | Absolute URI — `https://` preferred, `ipfs://` acceptable. Explorers and marketplaces show it |
+| `services`       | `sun agent service add`         | At least one, or the agent cannot be reached. See below                                       |
+| `x402Support`    | `--data` only                   | `true` if the agent takes per-request x402 payments                                           |
+| `supportedTrust` | `--data` only                   | Which trust models the agent honours                                                          |
+| `active`         | `sun agent activate/deactivate` | Explorers surface `active: true`; `false` reads as not production-ready                       |
 
 `type` is defaulted and `updatedAt` is stamped on every edit by the CLI — do not set them by hand.
 
@@ -33,26 +33,26 @@ This follows the [8004scan agent metadata standard](https://best-practices.8004s
 | `email` | Contact email                                                | —                              | Human-facing, not agent-to-agent                         |
 
 ```sh
-hrld agent service add <agentId> --name MCP --endpoint https://mcp.example.com --version 2025-11-25 \
+sun agent service add <agentId> --name MCP --endpoint https://mcp.example.com --version 2025-11-25 \
   --data '{"mcpTools":["translate_document"]}'
-hrld agent service add <agentId> --name A2A --endpoint https://example.com/.well-known/agent-card.json --version 0.3.0
-hrld agent service add <agentId> --name web --endpoint https://translator.example.com
+sun agent service add <agentId> --name A2A --endpoint https://example.com/.well-known/agent-card.json --version 0.3.0
+sun agent service add <agentId> --name web --endpoint https://translator.example.com
 ```
 
-Protocol versions are enforced by the consuming agent, not by `hrld` — `--version 1.0` on an MCP service will publish and will then fail discovery. Match the convention in the table.
+Protocol versions are enforced by the consuming agent, not by `sun` — `--version 1.0` on an MCP service will publish and will then fail discovery. Match the convention in the table.
 
 ### Service index shifts
 
-Services are addressed by **index**, which is display order. Removing or reordering one renumbers the rest, so re-run `hrld agent service list <agentId>` before any `update` or `remove` that targets an index you noted earlier.
+Services are addressed by **index**, which is display order. Removing or reordering one renumbers the rest, so re-run `sun agent service list <agentId>` before any `update` or `remove` that targets an index you noted earlier.
 
 ## What the CLI can and cannot set
 
 Local card fields — `x402Support`, `supportedTrust`, `mcpTools`, OASF `skills`/`domains`, custom service objects — all go through `--data`/`--file` and stored verbatim. Anything an explorer reads from the card, you can shape.
 
-**What you cannot do from `hrld` today is write those fields on-chain separately.** The identity registry exposes `setMetadata(agentId, key, value)` and `setAgentWallet(agentId, newWallet, deadline, signature)`, and `hrld` calls neither. The effect:
+**What you cannot do from `sun` today is write those fields on-chain separately.** The identity registry exposes `setMetadata(agentId, key, value)` and `setAgentWallet(agentId, newWallet, deadline, signature)`, and `sun` calls neither. The effect:
 
-- `hrld agent push` sets the **card** (the `agentURI`). Discovery data therefore lives in the card and travels with it.
-- There is no `hrld` command to set the reserved onchain `agentWallet` key.
+- `sun agent push` sets the **card** (the `agentURI`). Discovery data therefore lives in the card and travels with it.
+- There is no `sun` command to set the reserved onchain `agentWallet` key.
 
 ## Payment routing, and the trap
 
@@ -64,18 +64,18 @@ Job creation resolves the provider like this: read the agent's `agentWallet` met
 
 Two consequences worth stating to a user deliberately splitting revenue from identity:
 
-1. `agentWallet` exists in the API's index only where it was set on-chain. Since `hrld` cannot set it, **an agent published entirely through the CLI is paid at its owner address**, and there is no CLI path to change that.
+1. `agentWallet` exists in the API's index only where it was set on-chain. Since `sun` cannot set it, **an agent published entirely through the CLI is paid at its owner address**, and there is no CLI path to change that.
 2. `agentWallet` in the **card** (`--data '{"agentWallet": "0x…"}'`) is cosmetic. Job creation reads the onchain metadata, not the card. Writing it into the card will not redirect payment.
 
-To route payment to a different wallet today, either use that wallet as the owner (publish from it), or set the onchain key outside `hrld` — the registry's `setAgentWallet` requires an EIP-712 or ERC-1271 signature from the new wallet with a deadline under five minutes.
+To route payment to a different wallet today, either use that wallet as the owner (publish from it), or set the onchain key outside `sun` — the registry's `setAgentWallet` requires an EIP-712 or ERC-1271 signature from the new wallet with a deadline under five minutes.
 
 ## Push and refresh
 
 The card is local until `push`, and `push` is what the network sees.
 
 ```sh
-hrld agent push <agentId> --dry-run   # show register()/setAgentURI() and the agent URI size, send nothing
-hrld agent push <agentId>             # publish
+sun agent push <agentId> --dry-run   # show register()/setAgentURI() and the agent URI size, send nothing
+sun agent push <agentId>             # publish
 ```
 
 Push the card as a base64 data URI, which is the most immutable option: the profile is stored on-chain and cannot change under a client's feet. The cost is gas proportional to card size, and the practical ceiling is about 50 KB. Keep `description` and service lists tight if `--dry-run` shows a large URI.

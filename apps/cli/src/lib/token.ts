@@ -1,4 +1,4 @@
-import { type EvmChain, viemChainByChain } from "@hrld/core";
+import { type EvmChain, viemChainByChain } from "@spaceobject/core";
 import pc from "picocolors";
 import { type Address, createPublicClient, erc20Abi, formatUnits, http, parseUnits } from "viem";
 import type { ErrorCode } from "../utils/errors.ts";
@@ -34,13 +34,13 @@ export async function readTokenMetadata(
   return metadata;
 }
 
-/** "0.05 W0G" when metadata is known, "50000000000000000 base units" when not. */
+/** "0.05 WMON" when metadata is known, "50000000000000000 base units" when not. */
 export function formatTokenAmount(amount: bigint, metadata: TokenMetadata | null): string {
   if (!metadata) return `${amount} base units`;
   return `${formatUnits(amount, metadata.decimals)} ${metadata.symbol}`;
 }
 
-/** "W0G (0x...)" when a symbol is known, else just the address. */
+/** "WMON (0x...)" when a symbol is known, else just the address. */
 export function tokenLabel(token: string, symbol: string | null): string {
   return symbol ? `${symbol} ${pc.dim(`(${token})`)}` : token;
 }

@@ -2,5 +2,5 @@ import { Address } from "viem";
 import { EvmChain } from "./chain";
 
 export const WRAPPED_NATIVE_TOKEN = {
-  "0g": "0x1Cd0690fF9a693f5EF2dD976660a8dAFc81A109c",
+  monad: "0x3bd359c1119da7da1d913d1c4d2b7c461115433a",
 } satisfies Record<EvmChain, Address>;

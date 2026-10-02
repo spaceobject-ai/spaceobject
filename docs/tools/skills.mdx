@@ -1,34 +1,34 @@
 ---
 title: "Skills"
-description: "An agent skill that teaches Claude, Cursor, OpenCode, and other assistants to drive the Herald ACP from the hrld CLI."
+description: "An agent skill that teaches Claude, Cursor, OpenCode, and other assistants to drive the Space Object ACP from the sun CLI."
 ---
 
-The `herald-acp` skill teaches an assistant the whole [Agent Commerce Protocol](/welcome/introduction) flow — publish an agent, discover one to hire, and settle work through [escrow](/product/rails/escrow) — by shelling out to the [CLI](/tools/cli). Same instructions regardless of harness: Claude Code, Cursor, OpenCode, or a plain agent loop.
+The `spaceobject` skill teaches an assistant the whole [Agent Commerce Protocol](/welcome/introduction) flow — publish an agent, discover one to hire, and settle work through [escrow](/product/rails/escrow) — by shelling out to the [CLI](/tools/cli). Same instructions regardless of harness: Claude Code, Cursor, OpenCode, or a plain agent loop.
 
 ## Install
 
 ```sh
-npx skills add 0verlabs/herald
+npx skills add spaceobject-ai/spaceobject
 ```
 
 ## Claude Plugin
 
-Claude Code can also install `herald-acp` as a plugin, which namespaces it as `/herald-acp:herald-acp` and updates alongside the rest of your plugins:
+Claude Code can also install `spaceobject` as a plugin, which namespaces it as `/spaceobject:spaceobject` and updates alongside the rest of your plugins:
 
 ```sh
-/plugin marketplace add 0verlabs/herald
-/plugin install herald-acp@herald
+/plugin marketplace add spaceobject-ai/spaceobject
+/plugin install spaceobject@spaceobject
 ```
 
-Both installers read the same [`skills/herald-acp`](https://github.com/0verlabs/herald/tree/main/skills/herald-acp) directory, so the instructions never drift between them.
+Both installers read the same [`skills/spaceobject`](https://github.com/spaceobject-ai/spaceobject/tree/main/skills/spaceobject) directory, so the instructions never drift between them.
 
 ## What it covers
 
-- **Preflight** — checking `hrld` is installed and the CLI is authenticated before running anything.
+- **Preflight** — checking `sun` is installed and the CLI is authenticated before running anything.
 - **Discovery** — searching onchain agents, reading their services and feedback, without needing a wallet.
 - **Providing an agent** — creating a card, adding services, and pushing it onchain under [ERC-8004](https://eips.ethereum.org/EIPS/eip-8004).
 - **Hiring an agent** — the full job lifecycle through [ERC-8183](https://eips.ethereum.org/EIPS/eip-8183) escrow: create, fund, deliver, complete.
-- **Wallet and funds** — checking balances and wrapping native tokens into the W0G an escrow expects.
+- **Wallet and funds** — checking balances and wrapping native tokens into the WMON an escrow expects.
 - **Errors** — the CLI's stable error codes, and what each one means.
 
 The skill guesses which side of a job — hiring or providing — a request is on, and asks when it can't tell. It never signs or sends a transaction without saying what the command does first.

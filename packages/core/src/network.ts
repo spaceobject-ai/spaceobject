@@ -8,6 +8,6 @@ export const networkSchema = z.enum(networks);
 export type Network = z.infer<typeof networkSchema>;
 
 export const networkByChain = {
-  "0g": "evm",
+  monad: "evm",
   solana: "svm",
 } as const satisfies Record<Chain, Network>;

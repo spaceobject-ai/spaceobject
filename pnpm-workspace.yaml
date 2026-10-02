@@ -6,7 +6,6 @@ packages:
 catalogMode: prefer
 
 catalog:
-  "@0gfoundation/0g-storage-ts-sdk": ^1.2.12
   "@cloudflare/vite-plugin": ^1.54.4
   "@graphql-codegen/cli": ^7.4.1
   "@graphql-codegen/typescript": ^6.1.0
@@ -21,8 +20,6 @@ catalog:
   canonicalize: ^2.1.0
   commander: ^15.0.0
   cross-keychain: ^1.1.0
-  # Pinned to the exact peer range declared by @0gfoundation/0g-storage-ts-sdk.
-  ethers: 6.13.1
   flat-cache: ^6.1.23
   graphql: ^17.0.2
   graphql-request: ^7.4.0

@@ -1,5 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { searchAgentsOutputSchema, searchAgentsQuerySchema } from "@hrld/api/rpc";
+import { searchAgentsOutputSchema, searchAgentsQuerySchema } from "@spaceobject/api/rpc";
 
 import { ApiClient } from "../lib/api";
 import { errorResult, jsonResult, toolOutputSchema } from "../lib/mcp";

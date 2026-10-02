@@ -71,7 +71,7 @@ test("the agent URI round-trips through base64", () => {
   const card = parseAgentCard({
     name: "DataAnalyst",
     description: "Analyzes data",
-    registrations: [{ agentId: 42, agentRegistry: "eip155:16661:0x8004" }],
+    registrations: [{ agentId: 42, agentRegistry: "eip155:143:0x8004" }],
   });
 
   const uri = toAgentUri(card);
@@ -88,7 +88,7 @@ test("parseAgentUriCard inverts toAgentUri", () => {
     name: "DataAnalyst",
     description: "Analyzes data",
     services: [{ name: "MCP", endpoint: "https://mcp.example.com" }],
-    registrations: [{ agentId: 42, agentRegistry: "eip155:16661:0x8004" }],
+    registrations: [{ agentId: 42, agentRegistry: "eip155:143:0x8004" }],
   });
 
   expect(parseAgentUriCard(toAgentUri(card))).toEqual(card);

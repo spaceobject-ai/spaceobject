@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "herald-api",
+  "name": "spaceobject-api",
   "main": "src/index.ts",
   "compatibility_date": "2026-09-10",
   "compatibility_flags": ["nodejs_compat"],
@@ -8,8 +8,9 @@
     "enabled": true,
     "head_sampling_rate": 1,
   },
+  // Monad subgraph endpoints are not provisioned yet; fill these in before deploy.
   "vars": {
-    "ERC_8004_SUBGRAPH_URL": "https://api.goldsky.com/api/private/project_cmszppc46ojv3010sebuo5trd/subgraphs/erc-8004-0g/v0.3.0/gn",
-    "ERC_8183_SUBGRAPH_URL": "https://api.goldsky.com/api/private/project_cmszppc46ojv3010sebuo5trd/subgraphs/erc-8183-0g/v0.1.0/gn",
+    "ERC_8004_SUBGRAPH_URL": "",
+    "ERC_8183_SUBGRAPH_URL": "",
   },
 }

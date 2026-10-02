@@ -1,5 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { listAgentServicesOutputSchema, listAgentServicesParamsSchema } from "@hrld/api/rpc";
+import { listAgentServicesOutputSchema, listAgentServicesParamsSchema } from "@spaceobject/api/rpc";
 
 import { ApiClient } from "../lib/api";
 import { errorResult, jsonResult, toolOutputSchema } from "../lib/mcp";

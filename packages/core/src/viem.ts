@@ -1,8 +1,8 @@
-import { zeroGMainnet } from "viem/chains";
+import { monad } from "viem/chains";
 import type { EvmChain } from "./chain";
 
-// viem also exports `zeroG` (16600, the deprecated Newton testnet) and
-// `zeroGTestnet` (16602); 16661 is the only 0G network Herald targets.
+// viem also exports `monadTestnet` (10143); 143 is the only Monad network Space
+// Object targets.
 export const viemChainByChain = {
-  "0g": zeroGMainnet,
+  monad,
 } as const satisfies Record<EvmChain, unknown>;

@@ -38,7 +38,7 @@ const login = zodCommand({
         new CliError(
           "FLAG_CONFLICT",
           "--start and --complete cannot be used together.",
-          "Run `hrld auth login --start` first, then `hrld auth login --complete <request_id>`.",
+          "Run `sun auth login --start` first, then `sun auth login --complete <request_id>`.",
         ),
       )(json);
 
@@ -66,7 +66,7 @@ const login = zodCommand({
         ]),
         "",
         pc.dim(
-          `After approving, run: ${pc.bold(`hrld auth login --complete ${device.device_code}`)}`,
+          `After approving, run: ${pc.bold(`sun auth login --complete ${device.device_code}`)}`,
         ),
         pc.dim(`Expires in ${Math.round(device.expires_in / 60)} minutes.`),
       ].join("\n");
@@ -119,7 +119,7 @@ const whoami = zodCommand({
 
     const accessToken = await getValidAccessToken();
     if (!accessToken)
-      return err(new CliError("NOT_LOGGED_IN", "Not logged in.", "Run `hrld auth login`."))(json);
+      return err(new CliError("NOT_LOGGED_IN", "Not logged in.", "Run `sun auth login`."))(json);
 
     const claims = decodeAccessTokenClaims(accessToken);
     ok(fields([["User ID", pc.cyan(claims.sub)]]), { user_id: claims.sub })(json);
@@ -128,7 +128,7 @@ const whoami = zodCommand({
 
 export const auth = zodCommand({
   name: "auth",
-  description: "Authenticate Herald ACP",
+  description: "Authenticate Space Object ACP",
 })
   .addCommand(login)
   .addCommand(logout)
