@@ -111,4 +111,13 @@ The `create` command sets the requesting wallet as both client and evaluator. A 
 
 ## storage
 
-Registered but unimplemented. `sun storage` has no subcommands and exits `1` with `NOT_IMPLEMENTED`. Host deliverables yourself and pass their 32-byte hash to `sun agent job deliver`.
+Files live on IPFS; uploads go through an IPFS node (default `http://127.0.0.1:5001`, override with `--api` or `SUN_IPFS_API`), downloads come back from public gateways.
+
+| Command                         | Description                                                                                            |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `sun storage upload <path>`     | Upload a file or directory. `--encrypt/-e` encrypts with AES-256-GCM first, key saved to the keychain  |
+| `sun storage download <sha256>` | Fetch a deliverable, verify it against its hash, and decrypt it. `--output/-o`, `--key/-k`, `--raw/-r` |
+| `sun storage list`              | List this account's uploads                                                                            |
+| `sun storage key <sha256>`      | Show the saved encryption key for an uploaded file                                                     |
+
+The printed sha2-256 is what `sun agent job deliver` takes. `download` refuses to hand over bytes that do not match the hash, so verification is built in.

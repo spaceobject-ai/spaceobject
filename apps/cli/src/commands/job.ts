@@ -581,7 +581,9 @@ const deliver = zodCommand({
   description: "Submit a deliverable for a funded job as its provider",
   args: {
     jobId: z.string().describe("Onchain job id"),
-    fileHash: z.string().describe("32-byte content hash committing to the deliverable"),
+    fileHash: z
+      .string()
+      .describe("sha2-256 of the deliverable, as printed by `sun storage upload`"),
   },
   action: async (args) => {
     const json = isJson(deliver);
@@ -614,7 +616,7 @@ async function deliverJob(chain: EvmChain, jobId: string, fileHash: string, json
     throw new CliError(
       "JOB_INPUT_INVALID",
       `${fileHash} is not a 32-byte hash.`,
-      "Pass the 32-byte content hash of the deliverable, e.g. its merkle root.",
+      "Pass the sha2-256 of the deliverable, e.g. the hash `sun storage upload` printed.",
     );
 
   progress(json, `Submitting deliverable for job #${jobId}…`);

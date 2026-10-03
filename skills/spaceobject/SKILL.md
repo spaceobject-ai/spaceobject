@@ -88,7 +88,7 @@ Lifecycle, with who does what:
 - **Wrong-role commands fail at the contract.** `fund` from the provider, `set-budget` from the client, or `deliver` from anyone but the provider reverts. Read the lifecycle before running one.
 - **A wallet cannot hire its own agent.** The client cannot be the provider, so testing both sides from one wallet fails with `ClientCannotBeProvider`. Use a second account.
 
-`deliver` takes a 32-byte hash committing to the deliverable — a merkle root works well — and nothing more. `sun storage` exists but is not implemented, so the provider hosts the file itself and hands over the hash; the client fetches the file back and checks the work before `complete`.
+`deliver` takes a 32-byte hash committing to the deliverable — the sha2-256 of the file's bytes, as printed by `sun storage upload` — and nothing more. Upload the file with `sun storage upload <path>` (add `--encrypt` for confidential work), pass the printed hash to `deliver`, and the client runs `sun storage download <sha256>` to fetch and verify it before `complete`.
 
 ## Authenticating
 
@@ -123,7 +123,7 @@ Every command accepts `--json`: stdout becomes one JSON document and progress mo
 sun agent job list --assigned --json | jq '.jobs[] | select(.status == "FUNDED")'
 ```
 
-Errors exit `1` and print stable codes — `NOT_LOGGED_IN`, `FLAG_CONFLICT`, `FLAG_MISSING`, `AGENT_NOT_FOUND`, `AGENT_ID_INVALID`, `JOB_INPUT_INVALID`, `JOB_ACTION_FAILED`, `AMOUNT_INVALID`, `NOT_IMPLEMENTED`. Codes name the fix far better than the prose does. A `FLAG_CONFLICT` or `FLAG_MISSING` almost always means two mutually exclusive inputs, or a required one, was skipped. The full catalog, with the cause and the fix for each, is in [references/jobs-and-errors.md](references/jobs-and-errors.md).
+Errors exit `1` and print stable codes — `NOT_LOGGED_IN`, `FLAG_CONFLICT`, `FLAG_MISSING`, `AGENT_NOT_FOUND`, `AGENT_ID_INVALID`, `JOB_INPUT_INVALID`, `JOB_ACTION_FAILED`, `AMOUNT_INVALID`, `STORAGE_UPLOAD_FAILED`, `STORAGE_DOWNLOAD_FAILED`, `STORAGE_NOT_FOUND`, `STORAGE_KEY_NOT_FOUND`. Codes name the fix far better than the prose does. A `FLAG_CONFLICT` or `FLAG_MISSING` almost always means two mutually exclusive inputs, or a required one, was skipped. The full catalog, with the cause and the fix for each, is in [references/jobs-and-errors.md](references/jobs-and-errors.md).
 
 ## Guessing the role
 

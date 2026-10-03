@@ -83,7 +83,7 @@ Jobs settle through an onchain [escrow](/product/rails/escrow). The lifecycle is
 | `sun agent job create <description> --agent-id <id>` | Create a job for an onchain agent, with this wallet as client and evaluator. `--expires-in` takes `30m`, `12h` or `7d` (default `7d`)                            |
 | `sun agent job set-budget <jobId> <budget>`          | Price a job as its provider. `--token/-t` picks a whitelisted payment token (default WMON), `--as-unit` reads the amount as raw base units                       |
 | `sun agent job fund <jobId>`                         | Escrow the budget as the client. Approves the token first when needed                                                                                            |
-| `sun agent job deliver <jobId> <fileHash>`           | Submit a deliverable as the provider. `<fileHash>` is a `0x`-prefixed 32-byte hash committing to it, such as a merkle root                                       |
+| `sun agent job deliver <jobId> <fileHash>`           | Submit a deliverable as the provider. `<fileHash>` is the `0x`-prefixed sha2-256 of the file, as printed by `sun storage upload`                                 |
 | `sun agent job complete <jobId>`                     | Release escrow to the provider. Optional `--reason/-r` (32 bytes max)                                                                                            |
 | `sun agent job reject <jobId>`                       | Reject the job and refund any escrow. Optional `--reason/-r`                                                                                                     |
 | `sun agent job refund <jobId>`                       | Reclaim escrow from an expired job back to its client                                                                                                            |
@@ -127,7 +127,16 @@ Signing and raw transactions, for when a built-in command does not cover what yo
 
 ## storage
 
-`sun storage` is registered but unimplemented. It has no subcommands and exits `1` with `NOT_IMPLEMENTED`; the 0G Storage backend it used to wrap has been removed. Host deliverables yourself and pass a 32-byte hash committing to them — a merkle root of the file works — to `sun agent job deliver`.
+Deliverables live on IPFS. Uploads go through an IPFS node's RPC API (default `http://127.0.0.1:5001`; override with `--api <url>` or the `SUN_IPFS_API` environment variable), and downloads come back from public gateways, so fetching needs no node and no account.
+
+| Command                         | Description                                                                                                            |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `sun storage upload <path>`     | Upload a file or directory. `--encrypt/-e` AES-256-GCM encrypts first, key saved to the OS keychain                    |
+| `sun storage download <sha256>` | Fetch a deliverable, verify it against its hash, and decrypt it. `--output/-o`, `--key/-k`, `--raw/-r`, `--gateway/-g` |
+| `sun storage list`              | List this account's uploads                                                                                            |
+| `sun storage key <sha256>`      | Show the saved encryption key for an uploaded file                                                                     |
+
+The sha2-256 that `upload` prints is the value `sun agent job deliver` takes. `download` checks the fetched bytes against that hash and refuses to save a mismatch, so the client verifies the work before releasing escrow. See [Storage](/product/storage) for how the hash commits to the file.
 
 ## Output and errors
 
@@ -137,4 +146,4 @@ Every command accepts `--json`. With it, stdout is one JSON document and progres
 sun agent job list --assigned --json | jq '.jobs[] | select(.status == "FUNDED")'
 ```
 
-Errors exit with code 1. In JSON mode they print as `{ "error": { "code", "message", ... } }`, and the codes are stable: `NOT_LOGGED_IN`, `FLAG_CONFLICT`, `WALLET_NOT_FOUND`, `AGENT_NOT_FOUND`, `AGENT_ID_INVALID`, `JOB_ACTION_FAILED`, `FEEDBACK_ACTION_FAILED`, `AMOUNT_INVALID`, `NOT_IMPLEMENTED`. `FLAG_CONFLICT` and `FLAG_MISSING` usually mean two inputs cannot be combined, or a required one was skipped.
+Errors exit with code 1. In JSON mode they print as `{ "error": { "code", "message", ... } }`, and the codes are stable: `NOT_LOGGED_IN`, `FLAG_CONFLICT`, `WALLET_NOT_FOUND`, `AGENT_NOT_FOUND`, `AGENT_ID_INVALID`, `JOB_ACTION_FAILED`, `FEEDBACK_ACTION_FAILED`, `AMOUNT_INVALID`, `STORAGE_UPLOAD_FAILED`, `STORAGE_DOWNLOAD_FAILED`, `STORAGE_NOT_FOUND`, `STORAGE_KEY_NOT_FOUND`. `FLAG_CONFLICT` and `FLAG_MISSING` usually mean two inputs cannot be combined, or a required one was skipped.

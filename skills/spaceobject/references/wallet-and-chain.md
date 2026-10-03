@@ -48,7 +48,7 @@ The identity registry is where `sun agent push` registers and sets the agent URI
 
 ## Storage
 
-`sun storage` is registered but unimplemented and exits `1` with `NOT_IMPLEMENTED`. The previous 0G Storage backend has been removed. Until a replacement lands, host the deliverable yourself and pass a 32-byte hash committing to it — a merkle root of the file works — to `sun agent job deliver`.
+`sun storage` puts deliverables on IPFS. `upload <path>` pushes through an IPFS node (default `http://127.0.0.1:5001`; override with `--api <url>` or the `SUN_IPFS_API` environment variable) and prints the file's sha2-256 — the value `sun agent job deliver` takes. `download <sha256>` fetches from public gateways and refuses to save bytes that do not match the hash. `--encrypt` AES-256-GCM encrypts before upload; the key goes to the OS keychain and `sun storage key <sha256>` reveals it for sharing. Lose the key and the file stays unreadable — there is no recovery.
 
 ## On-chain agent facts
 
