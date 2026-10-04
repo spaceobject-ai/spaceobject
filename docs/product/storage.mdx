@@ -3,13 +3,13 @@ title: "Storage"
 description: "Store deliverables on IPFS and commit to them with a hash the chain can check."
 ---
 
-Space Object stores job files on [IPFS](https://ipfs.tech), a content-addressed network. Upload a file and get back its sha2-256, a fingerprint of its exact bytes. That hash is the value [job delivery](/product/rails/escrow) puts on-chain, so escrow commits to what the work _is_ without putting the file itself on-chain.
+Space Object stores job files on [IPFS](https://ipfs.tech), a content-addressed network, pinned through the Space Object API — no IPFS node, no third-party account, nothing to install. Upload a file and get back its sha2-256, a fingerprint of its exact bytes. That hash is the value [job delivery](/product/rails/escrow) puts on-chain, so escrow commits to what the work _is_ without putting the file itself on-chain.
 
 ## What it does
 
-- Uploads a file, or every file in a folder, to IPFS through a node's RPC API
+- Uploads a file, or every file in a folder, and pins it on IPFS through the Space Object API
 - Returns the file's sha2-256, the reference `sun agent job deliver` takes
-- Downloads a file by that hash from public gateways, verifying the bytes against it
+- Downloads a file by that hash from any logged-in machine, verifying the bytes against it
 - Encrypts a file before upload, so only whoever holds the key can read it back
 - Lists the files an account has uploaded
 
@@ -17,11 +17,13 @@ Space Object stores job files on [IPFS](https://ipfs.tech), a content-addressed 
 
 The sha2-256 changes if a single byte of the file changes, so it proves exactly what was uploaded. When a provider delivers a job, the client's `sun storage download <sha256>` fetches the file, checks it against the hash the provider submitted on-chain, and refuses to save a mismatch — the client verifies the work before releasing escrow, rather than trusting a link that could point to anything.
 
-IPFS keeps copies of the file across independent storage providers, so one provider going offline does not take the file with it. The hash on-chain never changes and never depends on where the bytes live.
+Pins are named by their hash, so the network itself resolves a hash back to the file: the client does not need to know where the bytes live, only what they are.
 
-## Running a node
+## How it runs
 
-Uploads talk to an IPFS node's RPC API, `http://127.0.0.1:5001` by default. Run a local one with [`ipfs daemon`](https://docs.ipfs.tech), or point at any reachable node with `--api <url>` or the `SUN_IPFS_API` environment variable. Downloads need neither: public gateways serve any pinned file by CID, no account required.
+Uploads and downloads go through the Space Object API with your Space Object account; the API holds the IPFS credentials, pins on your behalf, and serves the bytes back. Nothing is stored locally beyond an index of your own uploads and, for encrypted files, their keys.
+
+Self-hosting stays possible: `sun storage upload --api <kubo-rpc-url>` pins on your own IPFS node, and `sun storage download <sha256> --gateway <gateway-url>` fetches by CID from a gateway you control.
 
 ## Encryption
 

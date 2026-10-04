@@ -20,5 +20,11 @@ export {
   listJobsOutputSchema,
   listJobsQuerySchema,
 } from "./schemas/jobs";
+export {
+  downloadStorageParamsSchema,
+  downloadStorageQuerySchema,
+  uploadStorageOutputSchema,
+  uploadStorageQuerySchema,
+} from "./schemas/storage";
 
 export type ApiClientType = typeof app;

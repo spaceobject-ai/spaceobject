@@ -5,20 +5,21 @@ import { deliverableHash } from "@spaceobject/core";
 import pc from "picocolors";
 import { z } from "zod";
 import { zodCommand } from "zod-commander";
-import { requireUserId } from "../lib/session.ts";
+import { requireAccessToken, requireUserId } from "../lib/session.ts";
 import {
   appendUploads,
   decryptBytes,
   downloadBytes,
+  downloadDeliverable,
   encryptBytes,
   findUpload,
-  ipfsApiUrl,
   parseStorageKey,
   readStorageKeys,
   readUploads,
   saveStorageKeys,
   type UploadRecord,
   uploadBytes,
+  uploadDeliverable,
 } from "../lib/storage.ts";
 import { CliError } from "../utils/errors.ts";
 import { err, fields, isJson, ok, success } from "../utils/result.ts";
@@ -37,7 +38,7 @@ const upload = zodCommand({
     api: z
       .string()
       .optional()
-      .describe("IPFS node RPC API url; defaults to SUN_IPFS_API or http://127.0.0.1:5001"),
+      .describe("Pin on a self-hosted kubo node at this RPC url (default: the Space Object API)"),
   },
   action: async (args, opts) => {
     const json = isJson(upload);
@@ -82,7 +83,6 @@ async function uploadPath(
 ) {
   const userId = await requireUserId();
   const files = await collectFiles(inputPath);
-  const apiUrl = ipfsApiUrl(opts.api);
   const root = path.dirname(path.resolve(inputPath));
   const records: UploadRecord[] = [];
 
@@ -100,7 +100,7 @@ async function uploadPath(
     const key = opts.encrypt ? crypto.randomBytes(32) : undefined;
     const stored = key ? encryptBytes(bytes, key) : bytes;
 
-    const cid = await uploadBytes(name, stored, apiUrl);
+    const cid = await pinStored(name, stored, sha256, opts.api);
     const record: UploadRecord = {
       name,
       size: bytes.length,
@@ -116,7 +116,21 @@ async function uploadPath(
     records.push(record);
   }
 
-  return { apiUrl, records };
+  return { backend: opts.api ? "kubo" : "api", records };
+}
+
+// Uploads default to the Space Object API (QuickNode-backed, no node needed);
+// --api pins on a self-hosted kubo node instead. The pin name is the deliverable
+// hash either way, so downloads resolve by hash on both paths.
+async function pinStored(
+  name: string,
+  stored: Buffer,
+  sha256: string,
+  api: string | undefined,
+): Promise<string> {
+  if (api !== undefined) return uploadBytes(name, stored, api);
+
+  return uploadDeliverable(stored, sha256, await requireAccessToken());
 }
 
 async function collectFiles(inputPath: string): Promise<string[]> {
@@ -165,7 +179,7 @@ const download = zodCommand({
     gateway: z
       .string()
       .optional()
-      .describe("g;Fetch from this gateway url only, e.g. http://127.0.0.1:8080"),
+      .describe("g;Fetch by CID from a self-hosted gateway url instead of the Space Object API"),
   },
   action: async (args, opts) => {
     const json = isJson(download);
@@ -176,7 +190,7 @@ const download = zodCommand({
     ok(
       fields([
         ["SHA-256", pc.cyan(result.sha256)],
-        ["CID", pc.cyan(result.cid)],
+        ["CID", pc.cyan(result.cid ?? "unresolved")],
         ["Saved To", result.path],
         ["Size", formatBytes(result.size)],
         ["Verified", result.verified ? "yes" : "no"],
@@ -196,17 +210,20 @@ async function downloadFile(
     throw new CliError("FLAG_CONFLICT", "--key and --raw cannot be combined.");
 
   const userId = await requireUserId();
+  // Optional: the local record names the file and carries the CID for the
+  // --gateway path, but the API path resolves by hash alone.
   const record = findUpload(await readUploads(userId), sha256);
-  if (!record)
-    throw new CliError(
-      "STORAGE_NOT_FOUND",
-      `No upload with hash ${sha256}.`,
-      "Run `sun storage list` to see this account's uploads.",
-    );
+
+  // --gateway fetches by CID from a self-hosted node, which only this machine's
+  // index can supply; the default path asks the Space Object API, which works
+  // from any logged-in machine.
+  const fetched = opts.gateway
+    ? await requireGatewayRecord(record, sha256, opts.gateway)
+    : await downloadDeliverable(sha256, record?.cid, await requireAccessToken());
 
   const outputPath = path.resolve(opts.output ?? sha256);
-  progress(json, `Downloading ${record.name}…`);
-  const stored = await downloadBytes(record.cid, opts.gateway);
+  progress(json, `Downloading ${record?.name ?? sha256}…`);
+  const { stored, cid } = fetched;
 
   // --raw hands over the bytes exactly as pinned: no decryption, no plaintext
   // hash to check, so the result reports both as false.
@@ -214,7 +231,7 @@ async function downloadFile(
     await fs.writeFile(outputPath, stored);
     return {
       sha256,
-      cid: record.cid,
+      cid,
       path: outputPath,
       size: stored.length,
       verified: false,
@@ -222,73 +239,57 @@ async function downloadFile(
     };
   }
 
+  // The protocol's whole point: the onchain hash commits to the work, so the
+  // fetched bytes are checked against it before the file is trusted.
+  if (deliverableHash(stored) === sha256) {
+    await fs.writeFile(outputPath, stored);
+    return { sha256, cid, path: outputPath, size: stored.length, verified: true, decrypted: false };
+  }
+
+  // A mismatch means the file is encrypted (hash covers the plaintext) or the
+  // bytes are wrong; a key settles which.
   const key = opts.key ? parseStorageKey(normalizeKey(opts.key)) : null;
   if (opts.key && key === null)
     throw new CliError("STORAGE_INPUT_INVALID", `${opts.key} is not a 32-byte AES-256 key.`);
 
-  if (record.encrypted) {
-    const saved = key ?? parseStorageKey((await readStorageKeys(userId))[sha256] ?? "");
-    if (saved === null) {
-      // No key available: the ciphertext is still worth saving, and the
-      // caller can decrypt in place on a retry with --key.
-      await fs.writeFile(outputPath, stored);
-      process.stderr.write(
-        pc.yellow(
-          "No decryption key for this file — saved as stored. Pass --key <hex> to decrypt.\n",
-        ),
-      );
-      return {
-        sha256,
-        cid: record.cid,
-        path: outputPath,
-        size: stored.length,
-        verified: false,
-        decrypted: false,
-      };
-    }
-
-    const plaintext = decryptBytes(stored, saved);
-    if (plaintext === null)
-      throw new CliError(
-        "STORAGE_DOWNLOAD_FAILED",
-        "Decryption failed: the key does not match this file.",
-        "Check the key with `sun storage key <sha256>`.",
-      );
-    if (deliverableHash(plaintext) !== sha256)
-      throw new CliError(
-        "STORAGE_DOWNLOAD_FAILED",
-        "The decrypted bytes do not match the deliverable hash.",
-      );
-
-    await fs.writeFile(outputPath, plaintext);
-    return {
-      sha256,
-      cid: record.cid,
-      path: outputPath,
-      size: plaintext.length,
-      verified: true,
-      decrypted: true,
-    };
-  }
-
-  // The protocol's whole point: the onchain hash commits to the work, so the
-  // fetched bytes are checked against it before the file is trusted.
-  if (deliverableHash(stored) !== sha256)
+  const saved = key ?? parseStorageKey((await readStorageKeys(userId))[sha256] ?? "");
+  if (saved === null)
     throw new CliError(
       "STORAGE_DOWNLOAD_FAILED",
-      "The fetched bytes do not match the deliverable hash.",
-      "The pinned file changed after delivery; report it to the provider.",
+      "The fetched bytes do not match the deliverable hash and no decryption key is available.",
+      "If the provider encrypted the file, get the key (`sun storage key <sha256>` on their machine) and re-run with --key. Otherwise the bytes do not match their onchain commitment.",
     );
 
-  await fs.writeFile(outputPath, stored);
-  return {
-    sha256,
-    cid: record.cid,
-    path: outputPath,
-    size: stored.length,
-    verified: true,
-    decrypted: false,
-  };
+  const plaintext = decryptBytes(stored, saved);
+  if (plaintext === null)
+    throw new CliError(
+      "STORAGE_DOWNLOAD_FAILED",
+      "Decryption failed: the key does not match this file.",
+      "Check the key with `sun storage key <sha256>`.",
+    );
+  if (deliverableHash(plaintext) !== sha256)
+    throw new CliError(
+      "STORAGE_DOWNLOAD_FAILED",
+      "The decrypted bytes do not match the deliverable hash.",
+    );
+
+  await fs.writeFile(outputPath, plaintext);
+  return { sha256, cid, path: outputPath, size: plaintext.length, verified: true, decrypted: true };
+}
+
+async function requireGatewayRecord(
+  record: UploadRecord | undefined,
+  sha256: string,
+  gateway: string,
+) {
+  if (record === undefined)
+    throw new CliError(
+      "STORAGE_NOT_FOUND",
+      `No local record for ${sha256}.`,
+      "The --gateway path needs the CID from this machine's index; drop --gateway to fetch through the Space Object API.",
+    );
+
+  return { stored: await downloadBytes(record.cid, gateway), cid: record.cid };
 }
 
 function normalizeKey(value: string): string {

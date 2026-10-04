@@ -2,13 +2,14 @@ import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { SPACE_OBJECT_API_URL } from "@spaceobject/core";
 import { getPassword, setPassword } from "cross-keychain";
 import { z } from "zod";
 import { CliError } from "../utils/errors.ts";
 
-// Kubo RPC API endpoint for uploads; any node works, local or remote. The
-// public gateways below serve downloads with no node and no account.
-const DEFAULT_IPFS_API = "http://127.0.0.1:5001";
+// Kubo RPC API endpoint for self-hosted uploads (--api); the default path goes
+// through the Space Object API instead. The public gateways below serve
+// downloads for the --gateway path.
 const DEFAULT_GATEWAYS = ["https://ipfs.io", "https://dweb.link"];
 
 const STORAGE_DIR = path.join(os.homedir(), ".spaceobject", "sun", "storage");
@@ -175,8 +176,82 @@ export async function downloadBytes(cid: string, gatewayOverride?: string): Prom
   return bytes;
 }
 
-// The default upload endpoint; SUN_IPFS_API overrides for machines that run
-// their node elsewhere.
-export function ipfsApiUrl(override?: string): string {
-  return override ?? process.env.SUN_IPFS_API ?? DEFAULT_IPFS_API;
+// The Space Object API wraps QuickNode: uploads pin bytes under the deliverable
+// hash as the pin name, and downloads resolve that name back to a CID. The
+// QuickNode credentials never reach the CLI — only the Privy token every
+// command already carries.
+export async function uploadDeliverable(
+  bytes: Buffer,
+  sha256: string,
+  accessToken: string | null,
+  baseUrl: string = SPACE_OBJECT_API_URL,
+): Promise<string> {
+  if (accessToken === null)
+    throw new CliError("NOT_LOGGED_IN", "Not logged in.", "Run `sun auth login`.");
+
+  const response = await fetch(`${baseUrl.replace(/\/+$/, "")}/v1/storage?name=${sha256}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/octet-stream",
+    },
+    body: new Uint8Array(bytes),
+  }).catch(() => null);
+  if (response === null || !response.ok)
+    throw new CliError(
+      "STORAGE_UPLOAD_FAILED",
+      `The Space Object API rejected the upload${response ? `: HTTP ${response.status}` : "."}`,
+      response?.status === 401
+        ? "Run `sun auth login` and try again."
+        : "Check your connection, then retry.",
+    );
+
+  const result = await response
+    .json()
+    .then((value) => z.object({ cid: z.string().min(1) }).safeParse(value))
+    .catch(() => ({ success: false as const }));
+  if (!result.success)
+    throw new CliError(
+      "STORAGE_UPLOAD_FAILED",
+      "The Space Object API returned an unreadable response.",
+    );
+
+  return result.data.cid;
+}
+
+export async function downloadDeliverable(
+  sha256: string,
+  cid: string | undefined,
+  accessToken: string | null,
+  baseUrl: string = SPACE_OBJECT_API_URL,
+): Promise<{ stored: Buffer; cid: string | null }> {
+  if (accessToken === null)
+    throw new CliError("NOT_LOGGED_IN", "Not logged in.", "Run `sun auth login`.");
+
+  const response = await fetch(
+    `${baseUrl.replace(/\/+$/, "")}/v1/storage/${sha256}${cid ? `?cid=${encodeURIComponent(cid)}` : ""}`,
+    { headers: { Authorization: `Bearer ${accessToken}` } },
+  ).catch(() => null);
+  if (response === null)
+    throw new CliError(
+      "STORAGE_DOWNLOAD_FAILED",
+      `Could not reach the Space Object API at ${baseUrl}.`,
+      "Check your network connection, then run the command again.",
+    );
+  if (response.status === 404)
+    throw new CliError(
+      "STORAGE_NOT_FOUND",
+      `No deliverable with hash ${sha256} on the network.`,
+      "Check the hash; the provider submits it with `sun agent job deliver`.",
+    );
+  if (!response.ok)
+    throw new CliError(
+      "STORAGE_DOWNLOAD_FAILED",
+      `The Space Object API failed: HTTP ${response.status}.`,
+    );
+
+  return {
+    stored: Buffer.from(await response.arrayBuffer()),
+    cid: response.headers.get("X-IPFS-Cid") ?? null,
+  };
 }

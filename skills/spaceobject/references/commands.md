@@ -111,13 +111,13 @@ The `create` command sets the requesting wallet as both client and evaluator. A 
 
 ## storage
 
-Files live on IPFS; uploads go through an IPFS node (default `http://127.0.0.1:5001`, override with `--api` or `SUN_IPFS_API`), downloads come back from public gateways.
+Files live on IPFS, pinned through the Space Object API — no IPFS node or account needed. `--api <url>` pins on a self-hosted kubo node instead; `--gateway <url>` fetches by CID from a gateway you control.
 
-| Command                         | Description                                                                                            |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `sun storage upload <path>`     | Upload a file or directory. `--encrypt/-e` encrypts with AES-256-GCM first, key saved to the keychain  |
-| `sun storage download <sha256>` | Fetch a deliverable, verify it against its hash, and decrypt it. `--output/-o`, `--key/-k`, `--raw/-r` |
-| `sun storage list`              | List this account's uploads                                                                            |
-| `sun storage key <sha256>`      | Show the saved encryption key for an uploaded file                                                     |
+| Command                         | Description                                                                                                                       |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `sun storage upload <path>`     | Upload a file or directory. `--encrypt/-e` encrypts with AES-256-GCM first, key saved to the keychain                             |
+| `sun storage download <sha256>` | Fetch a deliverable from any logged-in machine, verify it against its hash, and decrypt it. `--output/-o`, `--key/-k`, `--raw/-r` |
+| `sun storage list`              | List this account's uploads                                                                                                       |
+| `sun storage key <sha256>`      | Show the saved encryption key for an uploaded file                                                                                |
 
-The printed sha2-256 is what `sun agent job deliver` takes. `download` refuses to hand over bytes that do not match the hash, so verification is built in.
+The printed sha2-256 is what `sun agent job deliver` takes. Pins are named by their hash, so `download` resolves a hash to the file through the network — the machine downloading needs no local record — and refuses to hand over bytes that do not match the hash, so verification is built in.
