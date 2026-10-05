@@ -3,14 +3,7 @@ schema
   @link(url: "https://specs.apollo.dev/join/v0.3", for: EXECUTION)
   @link(
     url: "https://the-guild.dev/graphql/mesh/spec/v1.0"
-    import: [
-      "@entity"
-      "@subgraphId"
-      "@derivedFrom"
-      "@transport"
-      "@merge"
-      "@extraSchemaDefinitionDirective"
-    ]
+    import: ["@entity", "@subgraphId", "@derivedFrom", "@merge"]
   ) {
   query: Query
 }
@@ -57,14 +50,6 @@ directive @subgraphId(id: String!) on OBJECT
 
 directive @derivedFrom(field: String!) on FIELD_DEFINITION
 
-directive @transport(
-  kind: String!
-  subgraph: String!
-  location: String!
-  headers: [[String]]
-  options: TransportOptions
-) repeatable on SCHEMA
-
 directive @merge(
   subgraph: String
   argsExpr: String
@@ -73,8 +58,6 @@ directive @merge(
   key: [String!]
   additionalArgs: String
 ) repeatable on FIELD_DEFINITION
-
-directive @extraSchemaDefinitionDirective(directives: _DirectiveExtensions) repeatable on OBJECT
 
 directive @additionalField on FIELD_DEFINITION
 
@@ -123,8 +106,6 @@ A string representation of microseconds UNIX timestamp (16 digits)
 scalar Timestamp @join__type(graph: ERC8004) @join__type(graph: ERC8183)
 
 scalar TransportOptions @join__type(graph: ERC8004) @join__type(graph: ERC8183)
-
-scalar _DirectiveExtensions @join__type(graph: ERC8004) @join__type(graph: ERC8183)
 
 type Account @join__type(graph: ERC8004, key: "id") @join__type(graph: ERC8183, key: "id") {
   id: Bytes!
@@ -781,33 +762,7 @@ type PaymentProofFile @join__type(graph: ERC8004, key: "id") {
   decimals: Int
 }
 
-type Query
-  @extraSchemaDefinitionDirective(
-    directives: {
-      transport: [
-        {
-          kind: "http"
-          subgraph: "ERC8004"
-          location: "https://api.goldsky.com/api/public/project_cmuuxq9auklbx01xaeblg8l69/subgraphs/erc-8004-monad/0.1.0/gn"
-          options: {}
-        }
-      ]
-    }
-  )
-  @extraSchemaDefinitionDirective(
-    directives: {
-      transport: [
-        {
-          kind: "http"
-          subgraph: "ERC8183"
-          location: "https://api.goldsky.com/api/public/project_cmuuxq9auklbx01xaeblg8l69/subgraphs/erc-8183-monad/0.1.0/gn"
-          options: {}
-        }
-      ]
-    }
-  )
-  @join__type(graph: ERC8004)
-  @join__type(graph: ERC8183) {
+type Query @join__type(graph: ERC8004) @join__type(graph: ERC8183) {
   identityRegistry(
     id: ID!
     """
