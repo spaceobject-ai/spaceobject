@@ -3,7 +3,7 @@ import type { Network } from "./network";
 import type { Wallet } from "./wallet";
 
 // Public client identifier; the app secret never ships with clients.
-export const PRIVY_APP_ID = "cmup54h2i01j80di4xu0x0fet";
+export const PRIVY_APP_ID = "cmuuwufc900ti0cjn20q19ifv";
 
 export const PRIVY_AUTH_ORIGIN = "https://auth.privy.io";
 

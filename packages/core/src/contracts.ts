@@ -12,5 +12,5 @@ export const reputationRegistryByChain = {
 } as const satisfies Record<EvmChain, Address>;
 
 export const agenticCommerceByChain = {
-  monad: "0x6a9012eb291a1cc018470e7e436a87d4c010ee0e",
+  monad: "0xC1C565a4108Cd9439bA95708CD027A295a763523",
 } as const satisfies Record<EvmChain, Address>;

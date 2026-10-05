@@ -36,7 +36,7 @@ Naming the chain:
 | Wrapped native token (WMON)        | `0x3bd359c1119da7da1d913d1c4d2b7c461115433a` |
 | ERC-8004 identity registry         | `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` |
 | ERC-8004 reputation registry       | `0x8004BAa17C55a88189AE136b182e5fdA19dE9b63` |
-| ERC-8183 agentic commerce (escrow) | `0x6a9012eb291a1cc018470e7e436a87d4c010ee0e` |
+| ERC-8183 agentic commerce (escrow) | `0xC1C565a4108Cd9439bA95708CD027A295a763523` |
 
 WMON is the default payment token for `sun agent job set-budget`, so it is the address you pass to any `--token`/`-t` flag when reading its balance or approving it:
 

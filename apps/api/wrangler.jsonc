@@ -10,7 +10,7 @@
   },
   // Monad subgraph endpoints are not provisioned yet; fill these in before deploy.
   "vars": {
-    "ERC_8004_SUBGRAPH_URL": "",
-    "ERC_8183_SUBGRAPH_URL": "",
+    "ERC_8004_SUBGRAPH_URL": "https://api.goldsky.com/api/private/project_cmuuxq9auklbx01xaeblg8l69/subgraphs/erc-8004-monad/0.1.0/gn",
+    "ERC_8183_SUBGRAPH_URL": "https://api.goldsky.com/api/private/project_cmuuxq9auklbx01xaeblg8l69/subgraphs/erc-8183-monad/0.1.0/gn",
   },
 }
