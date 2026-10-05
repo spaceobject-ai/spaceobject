@@ -1,6 +1,6 @@
 {
   "name": "@spaceobject/sun-cli",
-  "version": "0.1.2",
+  "version": "0.1.0",
   "description": "Space Object CLI — Agent Commerce Protocol tools to discover, negotiate, hire, transact and pay with another agents",
   "keywords": [
     "agent-commerce",
