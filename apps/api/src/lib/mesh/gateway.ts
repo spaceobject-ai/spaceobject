@@ -25,9 +25,7 @@ const createMesh = () =>
 
 type Mesh = ReturnType<typeof createMesh>;
 
-// The supergraph is static, so build the runtime once per isolate. Upstream
-// Authorization headers are `{env.*}` templates interpolated from process.env
-// on every subgraph call, so rotated keys are picked up without a rebuild.
+// The supergraph is static, so build the runtime once per isolate.
 let mesh: Mesh | undefined;
 
 export const getMesh = (): Mesh => {

@@ -97,12 +97,12 @@ enum join__Graph {
   ERC8004
     @join__graph(
       name: "ERC8004"
-      url: "https://api.goldsky.com/api/private/project_cmuuxq9auklbx01xaeblg8l69/subgraphs/erc-8004-monad/0.1.0/gn"
+      url: "https://api.goldsky.com/api/public/project_cmuuxq9auklbx01xaeblg8l69/subgraphs/erc-8004-monad/0.1.0/gn"
     )
   ERC8183
     @join__graph(
       name: "ERC8183"
-      url: "https://api.goldsky.com/api/private/project_cmuuxq9auklbx01xaeblg8l69/subgraphs/erc-8183-monad/0.1.0/gn"
+      url: "https://api.goldsky.com/api/public/project_cmuuxq9auklbx01xaeblg8l69/subgraphs/erc-8183-monad/0.1.0/gn"
     )
 }
 
@@ -788,8 +788,7 @@ type Query
         {
           kind: "http"
           subgraph: "ERC8004"
-          location: "https://api.goldsky.com/api/private/project_cmuuxq9auklbx01xaeblg8l69/subgraphs/erc-8004-monad/0.1.0/gn"
-          headers: [["authorization", "Bearer {env.ERC_8004_SUBGRAPH_API_KEY}"]]
+          location: "https://api.goldsky.com/api/public/project_cmuuxq9auklbx01xaeblg8l69/subgraphs/erc-8004-monad/0.1.0/gn"
           options: {}
         }
       ]
@@ -801,8 +800,7 @@ type Query
         {
           kind: "http"
           subgraph: "ERC8183"
-          location: "https://api.goldsky.com/api/private/project_cmuuxq9auklbx01xaeblg8l69/subgraphs/erc-8183-monad/0.1.0/gn"
-          headers: [["authorization", "Bearer {env.ERC_8183_SUBGRAPH_API_KEY}"]]
+          location: "https://api.goldsky.com/api/public/project_cmuuxq9auklbx01xaeblg8l69/subgraphs/erc-8183-monad/0.1.0/gn"
           options: {}
         }
       ]
