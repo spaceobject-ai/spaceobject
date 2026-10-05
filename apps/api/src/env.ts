@@ -1,9 +1,7 @@
-import { Sdk as Erc8004 } from "./lib/subgraphs/__generated/erc-8004";
-import { Sdk as Erc8183 } from "./lib/subgraphs/__generated/erc-8183";
+import type { Sdk } from "./lib/mesh/__generated/sdk";
 
 export interface GlobalVariables {
-  erc8004: Erc8004;
-  erc8183: Erc8183;
+  mesh: Sdk;
 }
 
 export interface Env<TVariables extends object = {}> {

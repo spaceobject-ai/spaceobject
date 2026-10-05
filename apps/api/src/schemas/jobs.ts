@@ -13,13 +13,21 @@ export const jobActivitySchema = z.object({
   txHash: z.string(),
 });
 
+// assignedAgent is stitched across the erc-8004 subgraph from providerAgentId;
+// null until a provider is assigned or the registration is not indexed (yet).
+export const jobAssignedAgentSchema = z.object({
+  id: z.string().describe("ERC-8004 agent ID, usable with GET /v1/agents/{agentId}"),
+  name: z.string().nullable(),
+  image: z.string().nullable(),
+});
+
 export const jobSummarySchema = z.object({
   id: z.string(),
   status: z.string(),
   client: z.string(),
   provider: z.string().nullable(),
   evaluator: z.string(),
-  agentId: z.string().nullable(),
+  assignedAgent: jobAssignedAgentSchema.nullable(),
   description: z.string(),
   deliverable: z.string().nullable(),
   completionReason: z.string().nullable(),

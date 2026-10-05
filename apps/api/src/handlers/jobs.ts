@@ -3,7 +3,7 @@ import { zeroAddress, isAddressEqual } from "viem";
 import { problemDetailsResponse } from "hono-problem-details/openapi";
 import { problemDetails } from "hono-problem-details";
 
-import { Job_Filter, JobStatus, JobSummaryFragment } from "../lib/subgraphs/__generated/erc-8183";
+import { Job_Filter, JobStatus, JobSummaryFragment } from "../lib/mesh/__generated/sdk";
 import { Env } from "../env";
 import { parseTimestamp } from "../utils/timestamp";
 import {
@@ -57,7 +57,13 @@ const toJobSummary = (job: JobSummaryFragment, nowSeconds: number) => ({
   client: job.client.address,
   provider: job.provider?.address ?? null,
   evaluator: job.evaluator.address,
-  agentId: job.providerAgentId === "0" ? null : job.providerAgentId,
+  assignedAgent: job.assignedAgent
+    ? {
+        id: job.assignedAgent.id,
+        name: job.assignedAgent.registration?.name ?? null,
+        image: job.assignedAgent.registration?.image ?? null,
+      }
+    : null,
   description: job.description,
   deliverable: job.deliverable,
   completionReason: job.completionReason,
@@ -131,7 +137,7 @@ export const jobHandlers = new OpenAPIHono<Env>()
       ...(query.agentId !== undefined ? { providerAgentId: query.agentId.toString() } : {}),
     };
 
-    const { jobs } = await c.var.erc8183.ListJobs({
+    const { jobs } = await c.var.mesh.ListJobs({
       first: query.limit,
       skip: query.skip,
       // `or` cannot sit next to sibling fields, so the base filter is repeated
@@ -155,7 +161,7 @@ export const jobHandlers = new OpenAPIHono<Env>()
     const jobId = c.req.valid("param").jobId.toString();
     const nowSeconds = Math.floor(Date.now() / 1000);
 
-    const { jobs } = await c.var.erc8183.GetJob({ jobId });
+    const { jobs } = await c.var.mesh.GetJob({ jobId });
     const [job] = jobs;
 
     if (!job)

@@ -21,9 +21,16 @@ catalog:
   commander: ^15.0.0
   cross-keychain: ^1.1.0
   flat-cache: ^6.1.23
-  graphql: ^17.0.2
+  # GraphQL Mesh / Hive Gateway peer-depends on graphql ^15.9 || ^16.9
+  graphql: ^16.9.0
   graphql-request: ^7.4.0
   graphql-tag: ^2.12.7
+  dataloader: ^2.2.3
+  "@graphql-codegen/typescript-generic-sdk": ^5.0.1
+  "@graphql-mesh/compose-cli": ^1.8.2
+  "@graphql-mesh/transport-http": ^1.2.1
+  "@graphql-mesh/types": ^0.107.1
+  "@graphql-hive/gateway-runtime": ^2.12.1
   hono: ^4.13.7
   hono-problem-details: ^0.11.0
   jsonc-parser: ^3.3.1
@@ -45,6 +52,7 @@ peerDependencyRules:
   allowedVersions:
     vite: "*"
 allowBuilds:
+  "@apollo/protobufjs": false
   "@reown/appkit": false
   bufferutil: false
   es5-ext: false

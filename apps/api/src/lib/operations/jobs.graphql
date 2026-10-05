@@ -8,6 +8,8 @@ fragment JobActivity on JobEvent {
   txHash: transactionHash
 }
 
+# providerAgent is stitched across the erc-8004 subgraph from providerAgentId
+# by src/lib/mesh/resolvers.ts; the resolver always fetches this selection.
 fragment JobSummary on Job {
   jobId
   status
@@ -21,6 +23,13 @@ fragment JobSummary on Job {
     address: id
   }
   providerAgentId
+  assignedAgent {
+    id: agentId
+    registration {
+      name
+      image
+    }
+  }
   description
   deliverable
   completionReason
