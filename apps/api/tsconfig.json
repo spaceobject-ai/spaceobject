@@ -1,5 +1,5 @@
 {
-  "include": ["src/**/*.ts", "vite.config.ts", "worker-configuration.d.ts"],
+  "include": ["src/**/*.ts", "tests/**/*.ts", "vite.config.ts", "worker-configuration.d.ts"],
   "compilerOptions": {
     "strict": true,
     "module": "ESNext",
@@ -9,6 +9,7 @@
     "skipLibCheck": true,
     "target": "ES2022",
     "types": ["node"],
+    "allowImportingTsExtensions": true,
     "noEmit": true
   }
 }

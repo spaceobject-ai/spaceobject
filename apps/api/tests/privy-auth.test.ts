@@ -1,9 +1,12 @@
 import { expect, test } from "vite-plus/test";
+import { PRIVY_APP_ID } from "@spaceobject/core";
 import { verifyPrivyToken, type Jwks } from "../src/lib/privy-auth.ts";
 
-// WebCrypto only, so the tests run under Node and workerd alike.
-async function makeSigningKey() {
-  const pair = await crypto.subtle.generateKey(
+// WebCrypto only, so the tests run under Node and workerd alike. generateKey
+// and exportKey return unions in @types/node, so the helpers narrow to the
+// shapes the tests actually use.
+async function rsaKeyPair() {
+  const generated = await crypto.subtle.generateKey(
     {
       name: "RSASSA-PKCS1-v1_5",
       modulusLength: 2048,
@@ -13,8 +16,22 @@ async function makeSigningKey() {
     true,
     ["sign", "verify"],
   );
+  if (!("publicKey" in generated)) throw new Error("expected a key pair");
 
-  const jwk = await crypto.subtle.exportKey("jwk", pair.publicKey);
+  return generated;
+}
+
+async function publicJwk(key: CryptoKey): Promise<JsonWebKey> {
+  const exported = await crypto.subtle.exportKey("jwk", key);
+  if (exported instanceof ArrayBuffer) throw new Error("expected a jwk export");
+
+  return exported;
+}
+
+async function makeSigningKey() {
+  const pair = await rsaKeyPair();
+  const jwk = await publicJwk(pair.publicKey);
+
   return {
     privateKey: pair.privateKey,
     jwks: {
@@ -47,7 +64,7 @@ test("accepts a token signed by a JWKS key with fresh expiry and privy claims", 
     sub: "did:privy:user-1",
     exp: Math.floor(Date.now() / 1000) + 60,
     iss: "privy.io",
-    aud: ["cmup54h2i01j80di4xu0x0fet"],
+    aud: [PRIVY_APP_ID],
   });
 
   await expect(verifyPrivyToken(token, jwks)).resolves.toMatchObject({ sub: "did:privy:user-1" });

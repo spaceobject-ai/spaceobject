@@ -34,7 +34,7 @@ const cid = "bafkreicouv3sksjuzxb3rbb6rziy6duakk2aikegsmtqtz5rsuppjorxsa";
 const deliverable = Buffer.from("test deliverable");
 
 async function makeToken() {
-  const pair = await crypto.subtle.generateKey(
+  const generated = await crypto.subtle.generateKey(
     {
       name: "RSASSA-PKCS1-v1_5",
       modulusLength: 2048,
@@ -44,7 +44,11 @@ async function makeToken() {
     true,
     ["sign", "verify"],
   );
-  const jwk = await crypto.subtle.exportKey("jwk", pair.publicKey);
+  if (!("publicKey" in generated)) throw new Error("expected a key pair");
+  const exported = await crypto.subtle.exportKey("jwk", generated.publicKey);
+  if (exported instanceof ArrayBuffer) throw new Error("expected a jwk export");
+  const jwk = exported;
+
   const jwks = { keys: [{ kid: "test-key", kty: "RSA", n: jwk.n ?? "", e: jwk.e ?? "AQAB" }] };
 
   const header = toBase64Url(
@@ -57,7 +61,7 @@ async function makeToken() {
   );
   const signature = await crypto.subtle.sign(
     "RSASSA-PKCS1-v1_5",
-    pair.privateKey,
+    generated.privateKey,
     new TextEncoder().encode(`${header}.${payload}`),
   );
 
@@ -72,7 +76,11 @@ function makeApp() {
   return testApp;
 }
 
-type Bindings = CloudflareBindings & WorkerSecrets;
+// The generated CloudflareBindings types carry literal URL types from
+// wrangler.jsonc; tests need the handler-shaped env instead.
+type Bindings = {
+  [K in keyof CloudflareBindings]: string;
+} & WorkerSecrets;
 
 function bindings(jwksUrl: string, quicknodeUrl: string): Bindings {
   return {
@@ -84,7 +92,7 @@ function bindings(jwksUrl: string, quicknodeUrl: string): Bindings {
     QUICKNODE_IPFS_API_KEY: "test-key",
     QUICKNODE_GATEWAY_URL: `${quicknodeUrl}/gateway`,
     PRIVY_JWKS_URL: jwksUrl,
-  } as Bindings;
+  };
 }
 
 test("upload pins through QuickNode and download resolves the hash back to bytes", async () => {
