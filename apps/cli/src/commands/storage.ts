@@ -9,7 +9,7 @@ import {
 import pc from "picocolors";
 import { z } from "zod";
 import { zodCommand } from "zod-commander";
-import { requireAccessToken, requireUserId } from "../lib/session.ts";
+import { currentUserId, requireAccessToken, requireUserId } from "../lib/session.ts";
 import {
   appendUploads,
   downloadBytes,
@@ -162,7 +162,7 @@ async function collectFiles(inputPath: string): Promise<string[]> {
 const download = zodCommand({
   name: "download",
   description:
-    "Reconstruct the CID from an onchain deliverable hash, fetch the bytes from the public gateway, and verify them",
+    "Reconstruct the CID from an onchain deliverable hash and fetch the bytes from the public gateway",
   args: {
     value: z.string().min(1).describe("Onchain deliverable hash (0x…) or CIDv0 (Qm…)"),
   },
@@ -188,7 +188,6 @@ const download = zodCommand({
         ["CID", pc.cyan(result.cid)],
         ["Saved To", result.path],
         ["Size", formatBytes(result.size)],
-        ["Verified", result.verified ? "yes" : "no"],
       ]),
       result,
     )(json);
@@ -196,8 +195,10 @@ const download = zodCommand({
 });
 
 // Either form works: the onchain hash (reconstructed into the CID) or the CID
-// itself (hash extracted from it). Verification always compares the fetched
-// bytes against the hash, so the download proves content integrity either way.
+// itself (hash extracted from it). Integrity rests on content addressing — the
+// gateway serves the bytes for that CID — not on a local re-hash; the trust
+// model is documented in docs/product/storage.mdx. No login is needed: the
+// index lookup only names the file when a session happens to exist.
 async function downloadFile(
   value: string,
   opts: { output?: string; gateway?: string },
@@ -207,24 +208,27 @@ async function downloadFile(
   if (hash === null)
     throw new CliError(
       "STORAGE_INPUT_INVALID",
-      `${value} is neither a 0x-prefixed 32-byte hash nor a raw-codec CIDv1 (bafkrei…).`,
+      `${value} is neither a 0x-prefixed 32-byte hash nor a CIDv0 (Qm…).`,
     );
 
   const cid = value.startsWith("0x") ? cidFromDeliverableHash(hash) : value;
-  const userId = await requireUserId();
-  const record = findUploadByCid(await readUploads(userId), cid);
+  const record = await findUploadBestEffort(cid);
 
   const outputPath = path.resolve(opts.output ?? value);
   progress(json, `Downloading ${record?.name ?? cid}…`);
   const stored = await downloadBytes(cid, opts.gateway);
 
-  // Content addressing is the integrity guarantee: the gateway serves exactly
-  // the bytes for that CID, and the CID was reconstructed from (or matched to)
-  // the onchain digest, so the right bytes for the onchain value are the bytes
-  // saved. A mismatched gateway would have to serve wrong content for a CID,
-  // which the network does not do.
   await fs.writeFile(outputPath, stored);
-  return { hash, cid, path: outputPath, size: stored.length, verified: true };
+  return { hash, cid, path: outputPath, size: stored.length };
+}
+
+// Best-effort because the index is a convenience, not a dependency: downloads
+// are account-free by design, and a missing login must not block them.
+async function findUploadBestEffort(cid: string): Promise<UploadRecord | undefined> {
+  const userId = await currentUserId().catch(() => null);
+  if (userId === null) return undefined;
+
+  return findUploadByCid(await readUploads(userId), cid);
 }
 
 const list = zodCommand({
@@ -243,7 +247,7 @@ const list = zodCommand({
         .map(
           (record) =>
             `${pc.cyan(record.sha256)}  ${record.name}  ${pc.dim(
-              `${formatBytes(record.size)}, ${record.uploadedAt.slice(0, 10)}${record.encrypted ? ", encrypted" : ""}`,
+              `${formatBytes(record.size)}, ${record.uploadedAt.slice(0, 10)}`,
             )}`,
         )
         .join("\n"),
@@ -259,22 +263,19 @@ async function listUploads() {
 
 const key = zodCommand({
   name: "key",
-  description: "Deprecated: chain deliverables cannot be encrypted, so no keys are kept",
+  description: "Deprecated: chain deliverables are pinned as plaintext, so no keys exist",
   args: {
     sha256: deliverableHashSchema.describe(
       "Deliverable hash of the encrypted file",
     ) as unknown as z.ZodType<`0x${string}`>,
   },
   action: async () => {
-    const json = isJson(key);
-
     err(
       new CliError(
-        "STORAGE_KEY_NOT_FOUND",
+        "STORAGE_INPUT_INVALID",
         "Encryption keys are no longer kept: chain deliverables are pinned as plaintext.",
-        "Files uploaded with --encrypt before this change still have keys in this machine's keychain.",
       ),
-    )(json);
+    )(isJson(key));
   },
 });
 

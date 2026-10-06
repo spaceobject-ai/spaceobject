@@ -31,7 +31,7 @@ function toBase64Url(bytes: Uint8Array): string {
   return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
 }
 
-const cid = "bafkreicouv3sksjuzxb3rbb6rziy6duakk2aikegsmtqtz5rsuppjorxsa";
+const cid = "QmNScLLyNHuFTzDbKfxTS9JAggzdYve6FbNfH3xSqYURw7";
 const deliverable = Buffer.from("test deliverable");
 
 async function makeToken() {
@@ -99,7 +99,6 @@ function bindings(quicknodeUrl: string): Bindings {
     ERC_8183_SUBGRAPH_API_KEY: "",
     QUICKNODE_IPFS_API_URL: quicknodeUrl,
     QUICKNODE_IPFS_API_KEY: "test-key",
-    QUICKNODE_GATEWAY_URL: `${quicknodeUrl}/gateway`,
   };
 }
 

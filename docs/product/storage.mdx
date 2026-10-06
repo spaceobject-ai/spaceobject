@@ -1,32 +1,27 @@
 ---
 title: "Storage"
-description: "Store deliverables on IPFS and commit to them with a hash the chain can check."
+description: "Store deliverables on IPFS and commit to them with the pin CID's digest."
 ---
 
-Space Object stores job files on [IPFS](https://ipfs.tech), a content-addressed network, pinned through the Space Object API — no IPFS node, no third-party account, nothing to install. Upload a file and get back its sha2-256, a fingerprint of its exact bytes. That hash is the value [job delivery](/product/rails/escrow) puts on-chain, so escrow commits to what the work _is_ without putting the file itself on-chain.
+Space Object stores job files on [IPFS](https://ipfs.tech), a content-addressed network, pinned through the Space Object API — no IPFS node, no third-party account, nothing to install. Upload a file and get back its **deliverable hash**: the multihash digest of the pin's CIDv0, the exact value [job delivery](/product/rails/escrow) puts on-chain as `bytes32`.
 
 ## What it does
 
 - Uploads a file, or every file in a folder, and pins it on IPFS through the Space Object API
-- Returns the file's sha2-256, the reference `sun agent job deliver` takes
-- Downloads a file by that hash from any logged-in machine, verifying the bytes against it
-- Encrypts a file before upload, so only whoever holds the key can read it back
-- Lists the files an account has uploaded
+- Prints the deliverable hash — the pin CID's digest — the value `sun agent job deliver` takes
+- Downloads a file by that hash from public gateways, from any machine, with no login
+- Lists the files an account has uploaded in a local index
 
-## Why a hash
+## How resolution works
 
-The sha2-256 changes if a single byte of the file changes, so it proves exactly what was uploaded. When a provider delivers a job, the client's `sun storage download <sha256>` fetches the file, checks it against the hash the provider submitted on-chain, and refuses to save a mismatch — the client verifies the work before releasing escrow, rather than trusting a link that could point to anything.
+The hash and the CID are two views of the same 34 bytes: a CIDv0 is the base58 encoding of `0x12 0x20 <32-byte digest>`. The chain stores the digest; the client re-adds the `1220` prefix, base58-encodes it back into the CID, and fetches it from any gateway. No mapping, no index, no relay — the on-chain value _is_ the address.
 
-Pins are named by their hash, so the network itself resolves a hash back to the file: the client does not need to know where the bytes live, only what they are.
+Because the digest covers the pin's UnixFS structure rather than the raw file bytes, it is not the same value `sha256sum` would print; always take the hash from `sun storage upload`, never compute it yourself. A self-computed file hash would not reconstruct back to the pinned CID, and the client's download would fail after the commitment is already on-chain.
 
-## How it runs
+## Trust model
 
-Uploads and downloads go through the Space Object API with your Space Object account; the API holds the IPFS credentials, pins on your behalf, and serves the bytes back. Nothing is stored locally beyond an index of your own uploads and, for encrypted files, their keys.
+Integrity rests on content addressing: the digest on-chain commits to the pin, and gateways serve the bytes for a CID. The CLI does not re-hash fetched bytes — it trusts the default gateway list (the Space Object dedicated gateway plus `ipfs.io`/`dweb.link`) to serve content-addressed data, which is core to how those services work. Passing `--gateway` selects a gateway you chose yourself, at your own risk. A client can independently verify the bytes by re-deriving the CID with any IPFS tooling.
 
-Self-hosting stays possible: `sun storage upload --api <kubo-rpc-url>` pins on your own IPFS node, and `sun storage download <sha256> --gateway <gateway-url>` fetches by CID from a gateway you control.
+## Self-hosting
 
-## Encryption
-
-Encrypting a file (`sun storage upload --encrypt`) gives it a fresh AES-256-GCM key. The key stays on your machine, in the OS keychain, and the CLI never prints or transmits it. Downloads from the same account decrypt automatically. To let someone else read the file, hand them the key from `sun storage key <sha256>` yourself. Lose the key and the file stays unreadable — there is no recovery.
-
-The on-chain hash still commits to the file's _plaintext_ bytes, so a client holding the key verifies the decrypted work against it.
+`sun storage upload --api <kubo-rpc-url>` pins on your own IPFS node instead; kubo's default pin format is the same CIDv0 shape, so the on-chain resolution is identical. Downloads never involve the Space Object API, and `--gateway <url>` can fetch from a gateway you control.

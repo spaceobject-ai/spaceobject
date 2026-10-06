@@ -48,7 +48,7 @@ The identity registry is where `sun agent push` registers and sets the agent URI
 
 ## Storage
 
-`sun storage` puts deliverables on IPFS through the Space Object API — no IPFS node needed. `upload <path>` pins on your behalf and prints the file's sha2-256 — the value `sun agent job deliver` takes. `download <sha256>` works from any logged-in machine (pins are named by their hash), and refuses to save bytes that do not match the hash. `--encrypt` AES-256-GCM encrypts before upload; the key goes to the OS keychain and `sun storage key <sha256>` reveals it for sharing. Lose the key and the file stays unreadable — there is no recovery. `--api <url>` / `--gateway <url>` switch to a self-hosted kubo node.
+`sun storage` puts deliverables on IPFS through the Space Object API — no IPFS node needed. `upload <path>` pins on your behalf and prints the deliverable hash (the pin CID's digest) — the value `sun agent job deliver` takes. `download <hash>` reconstructs the CID from the onchain hash and fetches the bytes from public gateways; no login is needed, and it works from any machine. Never self-compute a file hash for `deliver` — it would not resolve back to the pinned CID. `--api <url>` / `--gateway <url>` switch to a self-hosted kubo node.
 
 ## On-chain agent facts
 

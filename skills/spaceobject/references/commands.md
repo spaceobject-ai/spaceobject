@@ -111,13 +111,13 @@ The `create` command sets the requesting wallet as both client and evaluator. A 
 
 ## storage
 
-Files live on IPFS, pinned through the Space Object API — no IPFS node or account needed. `--api <url>` pins on a self-hosted kubo node instead; `--gateway <url>` fetches by CID from a gateway you control.
+Files live on IPFS, pinned through the Space Object API — no IPFS node or account needed for uploads; downloads fetch by CID from public gateways with no login. `--api <url>` pins on a self-hosted kubo node instead; `--gateway <url>` fetches from a gateway you control.
 
-| Command                         | Description                                                                                                                       |
-| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `sun storage upload <path>`     | Upload a file or directory. `--encrypt/-e` encrypts with AES-256-GCM first, key saved to the keychain                             |
-| `sun storage download <sha256>` | Fetch a deliverable from any logged-in machine, verify it against its hash, and decrypt it. `--output/-o`, `--key/-k`, `--raw/-r` |
-| `sun storage list`              | List this account's uploads                                                                                                       |
-| `sun storage key <sha256>`      | Show the saved encryption key for an uploaded file                                                                                |
+| Command                       | Description                                                                                                                     |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `sun storage upload <path>`   | Upload a file or directory and print the deliverable hash (the pin CID's digest). `--api <url>` pins on a self-hosted kubo node |
+| `sun storage download <hash>` | Reconstruct the CID from the onchain deliverable hash (or take a `Qm…` CID) and fetch the bytes. `--output/-o`, `--gateway/-g`  |
+| `sun storage list`            | List this account's uploads                                                                                                     |
+| `sun storage key <hash>`      | Deprecated — chain deliverables are pinned as plaintext                                                                         |
 
-The printed sha2-256 is what `sun agent job deliver` takes. Pins are named by their hash, so `download` resolves a hash to the file through the network — the machine downloading needs no local record — and refuses to hand over bytes that do not match the hash, so verification is built in.
+The deliverable hash `upload` prints is what `sun agent job deliver` takes — never a self-computed file hash, which would not resolve back to the pinned CID. Integrity rests on content addressing: the on-chain digest commits to the pin, gateways serve the bytes for a CID (see the product Storage page for the trust model).

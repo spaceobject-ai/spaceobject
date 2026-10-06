@@ -583,7 +583,7 @@ const deliver = zodCommand({
     jobId: z.string().describe("Onchain job id"),
     fileHash: z
       .string()
-      .describe("sha2-256 of the deliverable, as printed by `sun storage upload`"),
+      .describe("Deliverable hash printed by `sun storage upload` (the pin CID's digest)"),
   },
   action: async (args) => {
     const json = isJson(deliver);
@@ -616,7 +616,7 @@ async function deliverJob(chain: EvmChain, jobId: string, fileHash: string, json
     throw new CliError(
       "JOB_INPUT_INVALID",
       `${fileHash} is not a 32-byte hash.`,
-      "Pass the sha2-256 of the deliverable, e.g. the hash `sun storage upload` printed.",
+      "Pass the deliverable hash `sun storage upload` printed — never a self-computed file hash, which would not resolve back to the pinned CID.",
     );
 
   progress(json, `Submitting deliverable for job #${jobId}…`);

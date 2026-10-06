@@ -29,11 +29,8 @@ export type ErrorCode =
   | "API_REQUEST_FAILED"
   | "STORAGE_INPUT_INVALID"
   | "STORAGE_PATH_NOT_FOUND"
-  | "STORAGE_NOT_FOUND"
-  | "STORAGE_ALREADY_PINNED"
   | "STORAGE_UPLOAD_FAILED"
-  | "STORAGE_DOWNLOAD_FAILED"
-  | "STORAGE_KEY_NOT_FOUND";
+  | "STORAGE_DOWNLOAD_FAILED";
 
 export class CliError extends Error {
   readonly code: ErrorCode;

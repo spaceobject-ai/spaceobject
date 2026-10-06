@@ -1,4 +1,5 @@
 import http from "node:http";
+import { deliverableHashFromCid } from "@spaceobject/core";
 import { expect, test } from "vite-plus/test";
 import { downloadBytes, uploadBytes } from "../src/lib/storage.ts";
 import { CliError } from "../src/utils/errors.ts";
@@ -21,22 +22,38 @@ async function withServer<T>(
   }
 }
 
-test("uploadBytes posts to /api/v0/add and returns the hash", async () => {
+test("uploadBytes posts to /api/v0/add and returns a CIDv0 hash", async () => {
   const requests: string[] = [];
 
   await withServer(
     async (request, response) => {
       requests.push(`${request.method} ${request.url}`);
       response.writeHead(200, { "content-type": "application/json" });
-      response.end(JSON.stringify({ Name: "test.txt", Hash: "bafkreiabc", Size: "12" }));
+      // Kubo's default add: CIDv0 dag-pb, the same shape QuickNode pins.
+      response.end(
+        JSON.stringify({
+          Name: "test.txt",
+          Hash: "QmNScLLyNHuFTzDbKfxTS9JAggzdYve6FbNfH3xSqYURw7",
+          Size: "12",
+        }),
+      );
     },
     async (url) => {
-      const cid = await uploadBytes("test.txt", Buffer.from("deliverable"), url.toString());
+      const cid = await uploadBytes("test.txt", Buffer.from("deliverable"), url.origin);
 
-      expect(cid).toBe("bafkreiabc");
-      expect(requests[0]).toContain("/api/v0/add?cid-version=1&raw-leaves=true&pin=true");
+      expect(cid).toBe("QmNScLLyNHuFTzDbKfxTS9JAggzdYve6FbNfH3xSqYURw7");
+      expect(requests[0]).toContain("/api/v0/add?pin=true&quiet=true");
+      expect(requests[0]).not.toContain("cid-version");
     },
   );
+});
+
+test("a --api upload CID carries an extractable deliverable digest", async () => {
+  // The contract that broke in review: whatever uploadBytes returns must pass
+  // through deliverableHashFromCid, because upload extracts the onchain value
+  // from it. A CIDv1 response would make every --api upload fail.
+  expect(deliverableHashFromCid("QmNScLLyNHuFTzDbKfxTS9JAggzdYve6FbNfH3xSqYURw7")).not.toBeNull();
+  expect(deliverableHashFromCid("bafkreiabc")).toBeNull();
 });
 
 test("uploadBytes surfaces an unreachable node as STORAGE_UPLOAD_FAILED", async () => {

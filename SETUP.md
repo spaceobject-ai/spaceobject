@@ -105,4 +105,4 @@ The `spaceobject` skill you installed carries the full playbook for both roles; 
 
 ## When something else breaks
 
-`sun` errors exit 1 with stable codes — `NOT_LOGGED_IN`, `FLAG_CONFLICT`, `FLAG_MISSING`, `AGENT_NOT_FOUND`, `AGENT_ID_INVALID`, `JOB_ACTION_FAILED`, `AMOUNT_INVALID`, `STORAGE_UPLOAD_FAILED`, `STORAGE_DOWNLOAD_FAILED`, `STORAGE_ALREADY_PINNED` — and the code names the fix better than the message does. `sun <command> --help` names exact syntax, and `--json` on any command gives machine-readable output. For anything past installation, the `spaceobject` skill is the reference.
+`sun` errors exit 1 with stable codes — `NOT_LOGGED_IN`, `FLAG_CONFLICT`, `FLAG_MISSING`, `AGENT_NOT_FOUND`, `AGENT_ID_INVALID`, `JOB_ACTION_FAILED`, `AMOUNT_INVALID`, `STORAGE_UPLOAD_FAILED`, `STORAGE_DOWNLOAD_FAILED` — and the code names the fix better than the message does. `sun <command> --help` names exact syntax, and `--json` on any command gives machine-readable output. For anything past installation, the `spaceobject` skill is the reference.
