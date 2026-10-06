@@ -96,9 +96,10 @@ export const storageHandlers = new OpenAPIHono<Env>()
       { method: "POST", headers: { "x-api-key": c.env.QUICKNODE_IPFS_API_KEY }, body: form },
     ).catch(() => null);
     if (response === null || !response.ok) {
-      // QuickNode rejects duplicate pin names outright, so an existing pin
-      // under this hash surfaces as 409 — the hash is already pinned, and a
-      // re-upload (which --encrypt makes desirable) cannot replace it.
+      // QuickNode rejects duplicate pin names (verified live 2026-10-06: a
+      // same-name different-bytes upload returns 400 "File with that name
+      // already exists in your account"), so an existing pin under this hash
+      // surfaces as 409 — the hash is already pinned and cannot be re-uploaded.
       const duplicate =
         response !== null &&
         response.status === 400 &&
@@ -158,15 +159,21 @@ export const storageHandlers = new OpenAPIHono<Env>()
     });
   });
 
-// Re-uploads pin new ciphertext under the same name (fresh AES key per --encrypt
-// upload), so duplicates are routine: all matches are collected and the newest
-// pin wins, pairing with the newest keychain key on the uploader's machine.
-// Undated pins lose to any dated match — QuickNode reports createdAt on pins,
-// so an undated same-name pin is a pre-tracking artifact, not the live one.
+// QuickNode rejects duplicate pin names (verified live 2026-10-06: fresh-name
+// upload → 201, same-name different-bytes upload → 400 "File with that name
+// already exists in your account"), so duplicate same-name pins cannot occur
+// through this API. The newest-wins selection below is defensive: if the
+// backend contract ever changes to append semantics, resolution stays
+// deterministic instead of trusting undocumented list order.
+//
+// createdAt values are uniform ISO-8601 UTC timestamps (observed:
+// "2026-10-06T07:58:21.384Z"), so the string comparison below sorts them
+// correctly; mixed formats would break it, and undated pins fail closed.
 async function resolveCid(env: Env["Bindings"], sha256: string): Promise<string> {
   let newest: { cid: string; createdAt: string } | null = null;
   let sawUndated = false;
-  let scannedLimit: number | null = null;
+  let unscanned: number | null = null;
+  let scanned = 0;
 
   for (let page = 1; page <= RESOLVE_PAGE_LIMIT; page += 1) {
     const pins = await fetch(
@@ -195,13 +202,15 @@ async function resolveCid(env: Env["Bindings"], sha256: string): Promise<string>
         newest = { cid: pin.cid, createdAt: pin.createdAt };
     }
 
+    scanned += pins.data.data.length;
     const totalPages = pins.data.totalPages ?? page;
-    // totalItems beyond the scanned window means a matching pin may exist past
-    // the page cap; that is unresolvable-by-hash, not "not pinned".
-    scannedLimit =
-      pins.data.totalItems !== undefined && pins.data.totalItems > page * RESOLVE_PAGE_SIZE
-        ? pins.data.totalItems
-        : scannedLimit;
+    // Pins remain unscanned only when totalItems exceeds what has actually
+    // been returned (perPage is not documented as honored, so pages are
+    // counted, not assumed). Reset on every page so a full scan ends null.
+    unscanned =
+      pins.data.totalItems !== undefined && pins.data.totalItems > scanned
+        ? pins.data.totalItems - scanned
+        : null;
     if (page >= totalPages) break;
   }
 
@@ -213,11 +222,11 @@ async function resolveCid(env: Env["Bindings"], sha256: string): Promise<string>
       detail: `Pin(s) named ${sha256} exist without timestamps, so the latest cannot be selected.`,
       type: "Storage",
     });
-  if (scannedLimit !== null)
+  if (unscanned !== null)
     throw problemDetails({
       status: 502,
       title: "Resolution window exceeded",
-      detail: `No pin named ${sha256} within the most recent ${RESOLVE_PAGE_LIMIT * RESOLVE_PAGE_SIZE} of ${scannedLimit} pins.`,
+      detail: `No pin named ${sha256} within the most recent ${scanned} of ${scanned + unscanned} pins.`,
       type: "Storage",
     });
 

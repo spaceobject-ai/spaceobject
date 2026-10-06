@@ -429,3 +429,143 @@ test("an undated same-name pin is unresolvable rather than first-match", async (
     },
   );
 });
+
+test("a full-scan miss with a multi-page account returns 404, not window-exceeded", async () => {
+  const { token, jwk } = await makeToken();
+  // 150 pins over 2 pages, none matching: every pin IS scanned, so this must
+  // be a plain 404 — the stale-sentinel bug previously returned a 502 claiming
+  // a window was exceeded.
+  const filler = (count: number) =>
+    Array.from({ length: count }, (_, index) => ({
+      cid: `bafkreifiller${index}`,
+      name: `0x${(index + 1).toString(16).padStart(64, "0")}`,
+      createdAt: "2026-10-01T00:00:00Z",
+    }));
+
+  await withServer(
+    async (request, response) => {
+      if (request.url === "/jwks") {
+        response.writeHead(200, { "content-type": "application/json" });
+        response.end(JSON.stringify({ keys: [jwk] }));
+        return;
+      }
+      if (request.url === "/v1/pinning?pageNumber=1&perPage=100") {
+        response.writeHead(200, { "content-type": "application/json" });
+        response.end(JSON.stringify({ data: filler(100), totalPages: 2, totalItems: 150 }));
+        return;
+      }
+      if (request.url === "/v1/pinning?pageNumber=2&perPage=100") {
+        response.writeHead(200, { "content-type": "application/json" });
+        response.end(JSON.stringify({ data: filler(50), totalPages: 2, totalItems: 150 }));
+        return;
+      }
+      response.writeHead(404);
+      response.end();
+    },
+    async (url) => {
+      setPrivyJwksUrl(`${url.origin}/jwks`);
+      const response = await app.request(
+        `/v1/storage/${sha256}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+        bindings(url.origin),
+      );
+      setPrivyJwksUrl(null);
+
+      expect(response.status).toBe(404);
+      await expect(response.json()).resolves.toMatchObject({ title: "Not found" });
+    },
+  );
+});
+
+test("a short page (perPage not honored) with matching totalItems still 404s", async () => {
+  const { token, jwk } = await makeToken();
+  // The backend returns fewer than perPage on page 1 and totalItems equals the
+  // returned count: the scan is complete even though 100 were requested.
+  await withServer(
+    async (request, response) => {
+      if (request.url === "/jwks") {
+        response.writeHead(200, { "content-type": "application/json" });
+        response.end(JSON.stringify({ keys: [jwk] }));
+        return;
+      }
+      if (request.url === "/v1/pinning?pageNumber=1&perPage=100") {
+        response.writeHead(200, { "content-type": "application/json" });
+        response.end(
+          JSON.stringify({
+            data: [
+              {
+                cid: "bafkreishortpage00000000000000000000000000000000000000000",
+                name: `0x${"11".repeat(32)}`,
+                createdAt: "2026-10-01T00:00:00Z",
+              },
+            ],
+            totalPages: 1,
+            totalItems: 1,
+          }),
+        );
+        return;
+      }
+      response.writeHead(404);
+      response.end();
+    },
+    async (url) => {
+      setPrivyJwksUrl(`${url.origin}/jwks`);
+      const response = await app.request(
+        `/v1/storage/${sha256}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+        bindings(url.origin),
+      );
+      setPrivyJwksUrl(null);
+
+      expect(response.status).toBe(404);
+    },
+  );
+});
+
+test("a duplicate-name upload surfaces as 409 with pin detail", async () => {
+  const { token, jwk } = await makeToken();
+
+  await withServer(
+    async (request, response) => {
+      if (request.url === "/jwks") {
+        response.writeHead(200, { "content-type": "application/json" });
+        response.end(JSON.stringify({ keys: [jwk] }));
+        return;
+      }
+      if (request.url === "/v1/s3/put-object" && request.method === "POST") {
+        response.writeHead(400, { "content-type": "application/json" });
+        response.end(
+          JSON.stringify({
+            statusCode: 400,
+            message: "File with that name already exists in your account.",
+          }),
+        );
+        return;
+      }
+      response.writeHead(404);
+      response.end();
+    },
+    async (url) => {
+      setPrivyJwksUrl(`${url.origin}/jwks`);
+      const response = await app.request(
+        `/v1/storage?name=${sha256}`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/octet-stream",
+          },
+          body: new Uint8Array(deliverable),
+        },
+        bindings(url.origin),
+      );
+      setPrivyJwksUrl(null);
+
+      expect(response.status).toBe(409);
+      await expect(response.json()).resolves.toMatchObject({
+        title: "Already pinned",
+        detail: `A deliverable with hash ${sha256} is already pinned; it cannot be re-uploaded.`,
+      });
+    },
+  );
+});

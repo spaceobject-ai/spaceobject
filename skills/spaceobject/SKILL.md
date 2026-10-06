@@ -123,7 +123,7 @@ Every command accepts `--json`: stdout becomes one JSON document and progress mo
 sun agent job list --assigned --json | jq '.jobs[] | select(.status == "FUNDED")'
 ```
 
-Errors exit `1` and print stable codes — `NOT_LOGGED_IN`, `FLAG_CONFLICT`, `FLAG_MISSING`, `AGENT_NOT_FOUND`, `AGENT_ID_INVALID`, `JOB_INPUT_INVALID`, `JOB_ACTION_FAILED`, `AMOUNT_INVALID`, `STORAGE_UPLOAD_FAILED`, `STORAGE_DOWNLOAD_FAILED`, `STORAGE_NOT_FOUND`, `STORAGE_KEY_NOT_FOUND`. Codes name the fix far better than the prose does. A `FLAG_CONFLICT` or `FLAG_MISSING` almost always means two mutually exclusive inputs, or a required one, was skipped. The full catalog, with the cause and the fix for each, is in [references/jobs-and-errors.md](references/jobs-and-errors.md).
+Errors exit `1` and print stable codes — `NOT_LOGGED_IN`, `FLAG_CONFLICT`, `FLAG_MISSING`, `AGENT_NOT_FOUND`, `AGENT_ID_INVALID`, `JOB_INPUT_INVALID`, `JOB_ACTION_FAILED`, `AMOUNT_INVALID`, `STORAGE_UPLOAD_FAILED`, `STORAGE_DOWNLOAD_FAILED`, `STORAGE_NOT_FOUND`, `STORAGE_ALREADY_PINNED`, `STORAGE_KEY_NOT_FOUND`. Codes name the fix far better than the prose does. A `FLAG_CONFLICT` or `FLAG_MISSING` almost always means two mutually exclusive inputs, or a required one, was skipped. The full catalog, with the cause and the fix for each, is in [references/jobs-and-errors.md](references/jobs-and-errors.md).
 
 ## Guessing the role
 
