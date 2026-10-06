@@ -1,9 +1,11 @@
 import http from "node:http";
 import { expect, test } from "vite-plus/test";
+import { PRIVY_APP_ID } from "@spaceobject/core";
 import { problemDetailsHandler } from "hono-problem-details";
 
 import app from "../src/index.ts";
 import type { WorkerSecrets } from "../src/env.ts";
+import { setPrivyJwksUrl, type EcJwk } from "../src/lib/privy-auth.ts";
 
 // Real local HTTP servers stand in for Privy's JWKS endpoint and QuickNode's
 // API/gateway: the Worker's fetch code runs for real, only the remotes are ours.
@@ -34,38 +36,46 @@ const cid = "bafkreicouv3sksjuzxb3rbb6rziy6duakk2aikegsmtqtz5rsuppjorxsa";
 const deliverable = Buffer.from("test deliverable");
 
 async function makeToken() {
-  const generated = await crypto.subtle.generateKey(
-    {
-      name: "RSASSA-PKCS1-v1_5",
-      modulusLength: 2048,
-      publicExponent: new Uint8Array([1, 0, 1]),
-      hash: "SHA-256",
-    },
-    true,
-    ["sign", "verify"],
-  );
+  const generated = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, [
+    "sign",
+    "verify",
+  ]);
   if (!("publicKey" in generated)) throw new Error("expected a key pair");
-  const exported = await crypto.subtle.exportKey("jwk", generated.publicKey);
-  if (exported instanceof ArrayBuffer) throw new Error("expected a jwk export");
-  const jwk = exported;
 
-  const jwks = { keys: [{ kid: "test-key", kty: "RSA", n: jwk.n ?? "", e: jwk.e ?? "AQAB" }] };
+  const exported = await crypto.subtle.exportKey("jwk", generated.publicKey);
+  const jwk = exported instanceof ArrayBuffer ? null : exported;
+  if (jwk === null || jwk.x === undefined || jwk.y === undefined)
+    throw new Error("expected a jwk export");
+
+  const ecJwk: EcJwk = {
+    kty: "EC",
+    crv: "P-256",
+    x: jwk.x,
+    y: jwk.y,
+    kid: "test-key",
+    alg: "ES256",
+  };
 
   const header = toBase64Url(
-    new TextEncoder().encode(JSON.stringify({ alg: "RS256", kid: "test-key" })),
+    new TextEncoder().encode(JSON.stringify({ alg: "ES256", kid: "test-key" })),
   );
   const payload = toBase64Url(
     new TextEncoder().encode(
-      JSON.stringify({ sub: "user-1", exp: Math.floor(Date.now() / 1000) + 60, iss: "privy.io" }),
+      JSON.stringify({
+        sub: "user-1",
+        exp: Math.floor(Date.now() / 1000) + 60,
+        iss: `privy:${PRIVY_APP_ID}`,
+        aud: PRIVY_APP_ID,
+      }),
     ),
   );
   const signature = await crypto.subtle.sign(
-    "RSASSA-PKCS1-v1_5",
+    { name: "ECDSA", hash: "SHA-256" },
     generated.privateKey,
     new TextEncoder().encode(`${header}.${payload}`),
   );
 
-  return { token: `${header}.${payload}.${toBase64Url(new Uint8Array(signature))}`, jwks };
+  return { token: `${header}.${payload}.${toBase64Url(new Uint8Array(signature))}`, jwk: ecJwk };
 }
 
 // The app mounts the problem-details error handler; a bare handler export would
@@ -82,7 +92,7 @@ type Bindings = {
   [K in keyof CloudflareBindings]: string;
 } & WorkerSecrets;
 
-function bindings(jwksUrl: string, quicknodeUrl: string): Bindings {
+function bindings(quicknodeUrl: string): Bindings {
   return {
     ERC_8004_SUBGRAPH_URL: "",
     ERC_8004_SUBGRAPH_API_KEY: "",
@@ -91,22 +101,21 @@ function bindings(jwksUrl: string, quicknodeUrl: string): Bindings {
     QUICKNODE_IPFS_API_URL: quicknodeUrl,
     QUICKNODE_IPFS_API_KEY: "test-key",
     QUICKNODE_GATEWAY_URL: `${quicknodeUrl}/gateway`,
-    PRIVY_JWKS_URL: jwksUrl,
   };
 }
 
 test("upload pins through QuickNode and download resolves the hash back to bytes", async () => {
-  const { token, jwks } = await makeToken();
+  const { token, jwk } = await makeToken();
   const uploads: string[] = [];
 
   await withServer(
     async (request, response) => {
       if (request.url === "/jwks") {
         response.writeHead(200, { "content-type": "application/json" });
-        response.end(JSON.stringify(jwks));
+        response.end(JSON.stringify({ keys: [jwk] }));
         return;
       }
-      if (request.method === "POST" && request.url === "/v1/s3/put-object") {
+      if (request.url === "/v1/s3/put-object" && request.method === "POST") {
         uploads.push(String(request.headers["x-api-key"] ?? ""));
         response.writeHead(201, { "content-type": "application/json" });
         response.end(JSON.stringify({ pin: { cid, name: sha256 } }));
@@ -126,7 +135,8 @@ test("upload pins through QuickNode and download resolves the hash back to bytes
       response.end();
     },
     async (url) => {
-      const env = bindings(`${url.origin}/jwks`, url.origin);
+      setPrivyJwksUrl(`${url.origin}/jwks`);
+      const env = bindings(url.origin);
       const testApp = makeApp();
 
       const upload = await testApp.request(
@@ -152,18 +162,19 @@ test("upload pins through QuickNode and download resolves the hash back to bytes
       expect(download.status).toBe(200);
       expect(new Uint8Array(await download.arrayBuffer())).toEqual(new Uint8Array(deliverable));
       expect(download.headers.get("X-IPFS-Cid")).toBe(cid);
+      setPrivyJwksUrl(null);
     },
   );
 });
 
 test("download with ?cid= skips pin resolution", async () => {
-  const { token, jwks } = await makeToken();
+  const { token, jwk } = await makeToken();
 
   await withServer(
     async (request, response) => {
       if (request.url === "/jwks") {
         response.writeHead(200, { "content-type": "application/json" });
-        response.end(JSON.stringify(jwks));
+        response.end(JSON.stringify({ keys: [jwk] }));
         return;
       }
       if (request.url === `/gateway/ipfs/${cid}?key=test-key`) {
@@ -175,15 +186,16 @@ test("download with ?cid= skips pin resolution", async () => {
       response.end();
     },
     async (url) => {
-      const env = bindings(`${url.origin}/jwks`, url.origin);
-
+      setPrivyJwksUrl(`${url.origin}/jwks`);
       const download = await app.request(
         `/v1/storage/${sha256}?cid=${cid}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         },
-        env,
+        bindings(url.origin),
       );
+      setPrivyJwksUrl(null);
+
       expect(download.status).toBe(200);
       expect(new Uint8Array(await download.arrayBuffer())).toEqual(new Uint8Array(deliverable));
     },
@@ -191,22 +203,18 @@ test("download with ?cid= skips pin resolution", async () => {
 });
 
 test("requests without a token are rejected", async () => {
-  const response = await app.request(
-    `/v1/storage/${sha256}`,
-    {},
-    bindings("http://127.0.0.1:1", "http://127.0.0.1:1"),
-  );
+  const response = await app.request(`/v1/storage/${sha256}`, {}, bindings("http://127.0.0.1:1"));
   expect(response.status).toBe(401);
 });
 
 test("an unknown deliverable hash resolves to 404", async () => {
-  const { token, jwks } = await makeToken();
+  const { token, jwk } = await makeToken();
 
   await withServer(
     async (request, response) => {
       if (request.url === "/jwks") {
         response.writeHead(200, { "content-type": "application/json" });
-        response.end(JSON.stringify(jwks));
+        response.end(JSON.stringify({ keys: [jwk] }));
         return;
       }
       if (request.url === "/v1/pinning?pageNumber=1&perPage=100") {
@@ -218,13 +226,15 @@ test("an unknown deliverable hash resolves to 404", async () => {
       response.end();
     },
     async (url) => {
+      setPrivyJwksUrl(`${url.origin}/jwks`);
       const response = await app.request(
         `/v1/storage/${sha256}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         },
-        bindings(`${url.origin}/jwks`, url.origin),
+        bindings(url.origin),
       );
+      setPrivyJwksUrl(null);
 
       expect(response.status).toBe(404);
     },

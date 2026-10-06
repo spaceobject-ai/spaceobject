@@ -1,42 +1,32 @@
 import { expect, test } from "vite-plus/test";
 import { PRIVY_APP_ID } from "@spaceobject/core";
-import { verifyPrivyToken, type Jwks } from "../src/lib/privy-auth.ts";
+import { verifyPrivyToken, type EcJwk } from "../src/lib/privy-auth.ts";
 
 // WebCrypto only, so the tests run under Node and workerd alike. generateKey
 // and exportKey return unions in @types/node, so the helpers narrow to the
 // shapes the tests actually use.
-async function rsaKeyPair() {
-  const generated = await crypto.subtle.generateKey(
-    {
-      name: "RSASSA-PKCS1-v1_5",
-      modulusLength: 2048,
-      publicExponent: new Uint8Array([1, 0, 1]),
-      hash: "SHA-256",
-    },
-    true,
-    ["sign", "verify"],
-  );
+async function makeSigningKey(kid: string): Promise<{ privateKey: CryptoKey; jwk: EcJwk }> {
+  const generated = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, [
+    "sign",
+    "verify",
+  ]);
   if (!("publicKey" in generated)) throw new Error("expected a key pair");
 
-  return generated;
-}
-
-async function publicJwk(key: CryptoKey): Promise<JsonWebKey> {
-  const exported = await crypto.subtle.exportKey("jwk", key);
-  if (exported instanceof ArrayBuffer) throw new Error("expected a jwk export");
-
-  return exported;
-}
-
-async function makeSigningKey() {
-  const pair = await rsaKeyPair();
-  const jwk = await publicJwk(pair.publicKey);
+  const exported = await crypto.subtle.exportKey("jwk", generated.publicKey);
+  const jwk = exported instanceof ArrayBuffer ? null : exported;
+  if (jwk === null || jwk.x === undefined || jwk.y === undefined)
+    throw new Error("expected a jwk export");
 
   return {
-    privateKey: pair.privateKey,
-    jwks: {
-      keys: [{ kid: "test-key", kty: jwk.kty ?? "RSA", n: jwk.n ?? "", e: jwk.e ?? "AQAB" }],
-    } satisfies Jwks,
+    privateKey: generated.privateKey,
+    jwk: {
+      kty: "EC",
+      crv: "P-256",
+      x: jwk.x,
+      y: jwk.y,
+      kid,
+      alg: "ES256",
+    },
   };
 }
 
@@ -46,11 +36,13 @@ function toBase64Url(bytes: Uint8Array): string {
   return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
 }
 
-async function signToken(privateKey: CryptoKey, claims: Record<string, unknown>, kid = "test-key") {
-  const header = toBase64Url(new TextEncoder().encode(JSON.stringify({ alg: "RS256", kid })));
+async function signToken(privateKey: CryptoKey, claims: Record<string, unknown>, kid: string) {
+  const header = toBase64Url(new TextEncoder().encode(JSON.stringify({ alg: "ES256", kid })));
   const payload = toBase64Url(new TextEncoder().encode(JSON.stringify(claims)));
+  // JOSE ES256 signatures are raw r||s, which is what WebCrypto emits and
+  // accepts directly.
   const signature = await crypto.subtle.sign(
-    "RSASSA-PKCS1-v1_5",
+    { name: "ECDSA", hash: "SHA-256" },
     privateKey,
     new TextEncoder().encode(`${header}.${payload}`),
   );
@@ -58,39 +50,96 @@ async function signToken(privateKey: CryptoKey, claims: Record<string, unknown>,
   return `${header}.${payload}.${toBase64Url(new Uint8Array(signature))}`;
 }
 
-test("accepts a token signed by a JWKS key with fresh expiry and privy claims", async () => {
-  const { privateKey, jwks } = await makeSigningKey();
-  const token = await signToken(privateKey, {
-    sub: "did:privy:user-1",
-    exp: Math.floor(Date.now() / 1000) + 60,
-    iss: "privy.io",
-    aud: [PRIVY_APP_ID],
-  });
+test("accepts a CLI-style token: ES256, privy:<app id> issuer, app audience", async () => {
+  const pair = await makeSigningKey("test-key");
+  const token = await signToken(
+    pair.privateKey,
+    {
+      sub: "did:privy:user-1",
+      exp: Math.floor(Date.now() / 1000) + 60,
+      iss: `privy:${PRIVY_APP_ID}`,
+      aud: PRIVY_APP_ID,
+      grant: "device_code",
+    },
+    pair.jwk.kid,
+  );
 
-  await expect(verifyPrivyToken(token, jwks)).resolves.toMatchObject({ sub: "did:privy:user-1" });
+  await expect(verifyPrivyToken(token, [pair.jwk])).resolves.toMatchObject({
+    sub: "did:privy:user-1",
+  });
+});
+
+test("accepts a browser-style token with the privy.io issuer", async () => {
+  const pair = await makeSigningKey("test-key");
+  const token = await signToken(
+    pair.privateKey,
+    {
+      sub: "user-2",
+      exp: Math.floor(Date.now() / 1000) + 60,
+      iss: "privy.io",
+      aud: [PRIVY_APP_ID],
+    },
+    pair.jwk.kid,
+  );
+
+  await expect(verifyPrivyToken(token, [pair.jwk])).resolves.toMatchObject({ sub: "user-2" });
+});
+
+test("selects the matching key from a multi-key JWKS", async () => {
+  const other = await makeSigningKey("other-key");
+  const pair = await makeSigningKey("test-key");
+  const token = await signToken(
+    pair.privateKey,
+    {
+      sub: "user-3",
+      exp: Math.floor(Date.now() / 1000) + 60,
+    },
+    pair.jwk.kid,
+  );
+
+  await expect(verifyPrivyToken(token, [other.jwk, pair.jwk])).resolves.toMatchObject({
+    sub: "user-3",
+  });
 });
 
 test("rejects an expired token", async () => {
-  const { privateKey, jwks } = await makeSigningKey();
-  const token = await signToken(privateKey, {
-    sub: "user",
-    exp: Math.floor(Date.now() / 1000) - 10,
-  });
+  const pair = await makeSigningKey("test-key");
+  const token = await signToken(
+    pair.privateKey,
+    {
+      sub: "user",
+      exp: Math.floor(Date.now() / 1000) - 10,
+    },
+    pair.jwk.kid,
+  );
 
-  await expect(verifyPrivyToken(token, jwks)).resolves.toBeNull();
+  await expect(verifyPrivyToken(token, [pair.jwk])).resolves.toBeNull();
 });
 
-test("rejects a token signed by a key outside the JWKS", async () => {
-  const { privateKey } = await makeSigningKey();
-  const other = await makeSigningKey();
-  const token = await signToken(privateKey, { sub: "user", exp: Date.now() / 1000 + 60 });
+test("rejects a token whose kid is not in the JWKS", async () => {
+  const pair = await makeSigningKey("test-key");
+  const token = await signToken(
+    pair.privateKey,
+    {
+      sub: "user",
+      exp: Math.floor(Date.now() / 1000) + 60,
+    },
+    "unknown-kid",
+  );
 
-  await expect(verifyPrivyToken(token, other.jwks)).resolves.toBeNull();
+  await expect(verifyPrivyToken(token, [pair.jwk])).resolves.toBeNull();
 });
 
 test("rejects a token whose payload was tampered with", async () => {
-  const { privateKey, jwks } = await makeSigningKey();
-  const token = await signToken(privateKey, { sub: "user", exp: Date.now() / 1000 + 60 });
+  const pair = await makeSigningKey("test-key");
+  const token = await signToken(
+    pair.privateKey,
+    {
+      sub: "user",
+      exp: Math.floor(Date.now() / 1000) + 60,
+    },
+    pair.jwk.kid,
+  );
   const [header, , signature] = token.split(".");
   const forgedPayload = toBase64Url(
     new TextEncoder().encode(
@@ -99,17 +148,21 @@ test("rejects a token whose payload was tampered with", async () => {
   );
 
   await expect(
-    verifyPrivyToken(`${header}.${forgedPayload}.${signature}`, jwks),
+    verifyPrivyToken(`${header}.${forgedPayload}.${signature}`, [pair.jwk]),
   ).resolves.toBeNull();
 });
 
 test("rejects a token issued for a different app", async () => {
-  const { privateKey, jwks } = await makeSigningKey();
-  const token = await signToken(privateKey, {
-    sub: "user",
-    exp: Math.floor(Date.now() / 1000) + 60,
-    aud: ["someone-elses-app"],
-  });
+  const pair = await makeSigningKey("test-key");
+  const token = await signToken(
+    pair.privateKey,
+    {
+      sub: "user",
+      exp: Math.floor(Date.now() / 1000) + 60,
+      aud: "someone-elses-app",
+    },
+    pair.jwk.kid,
+  );
 
-  await expect(verifyPrivyToken(token, jwks)).resolves.toBeNull();
+  await expect(verifyPrivyToken(token, [pair.jwk])).resolves.toBeNull();
 });

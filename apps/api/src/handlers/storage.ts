@@ -107,10 +107,12 @@ export const storageHandlers = new OpenAPIHono<Env>()
     const sha256 = c.req.valid("param").sha256;
     const cid = c.req.valid("query").cid ?? (await resolveCid(c.env, sha256));
 
-    // The gateway secret may hold the full key-embedded form; strip any /ipfs
-    // suffix so only the base domain is used, then send the key as both a query
-    // param and a header to cover either private-gateway convention.
-    const base = c.env.QUICKNODE_GATEWAY_URL.replace(/\/+$/, "").replace(/\/ipfs$/, "");
+    // The gateway secret may hold the full key-embedded form — a base domain
+    // with an /ipfs path and possibly a CID-like key segment after it — so
+    // everything from the first /ipfs on is dropped and only the base domain is
+    // used. The key is sent as both a query param and a header to cover either
+    // private-gateway convention.
+    const base = c.env.QUICKNODE_GATEWAY_URL.replace(/\/+$/, "").split("/ipfs")[0];
     const response = await fetch(`${base}/ipfs/${cid}?key=${c.env.QUICKNODE_IPFS_API_KEY}`, {
       headers: { "x-api-key": c.env.QUICKNODE_IPFS_API_KEY },
     }).catch(() => null);
