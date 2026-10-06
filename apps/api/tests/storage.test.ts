@@ -8,7 +8,7 @@ import type { WorkerSecrets } from "../src/env.ts";
 import { setPrivyJwksUrl, type EcJwk } from "../src/lib/privy-auth.ts";
 
 // Real local HTTP servers stand in for Privy's JWKS endpoint and QuickNode's
-// API/gateway: the Worker's fetch code runs for real, only the remotes are ours.
+// API: the Worker's fetch code runs for real, only the remote end is ours.
 async function withServer<T>(
   handler: http.RequestListener,
   run: (url: URL) => Promise<T>,
@@ -31,7 +31,6 @@ function toBase64Url(bytes: Uint8Array): string {
   return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
 }
 
-const sha256 = `0x${"ab".repeat(32)}`;
 const cid = "bafkreicouv3sksjuzxb3rbb6rziy6duakk2aikegsmtqtz5rsuppjorxsa";
 const deliverable = Buffer.from("test deliverable");
 
@@ -104,7 +103,7 @@ function bindings(quicknodeUrl: string): Bindings {
   };
 }
 
-test("upload pins through QuickNode and download resolves the hash back to bytes", async () => {
+test("upload pins through QuickNode and returns the CID", async () => {
   const { token, jwk } = await makeToken();
   const uploads: string[] = [];
 
@@ -118,23 +117,7 @@ test("upload pins through QuickNode and download resolves the hash back to bytes
       if (request.url === "/v1/s3/put-object" && request.method === "POST") {
         uploads.push(String(request.headers["x-api-key"] ?? ""));
         response.writeHead(201, { "content-type": "application/json" });
-        response.end(JSON.stringify({ pin: { cid, name: sha256 } }));
-        return;
-      }
-      if (request.url === "/v1/pinning?pageNumber=1&perPage=100") {
-        response.writeHead(200, { "content-type": "application/json" });
-        response.end(
-          JSON.stringify({
-            data: [{ cid, name: sha256, createdAt: "2026-10-05T16:00:00Z" }],
-            totalPages: 1,
-            totalItems: 1,
-          }),
-        );
-        return;
-      }
-      if (request.url === `/gateway/ipfs/${cid}?key=test-key`) {
-        response.writeHead(200, { "content-type": "application/octet-stream" });
-        response.end(deliverable);
+        response.end(JSON.stringify({ pin: { cid, name: "uuid-1" } }));
         return;
       }
       response.writeHead(404);
@@ -142,413 +125,10 @@ test("upload pins through QuickNode and download resolves the hash back to bytes
     },
     async (url) => {
       setPrivyJwksUrl(`${url.origin}/jwks`);
-      const env = bindings(url.origin);
       const testApp = makeApp();
 
       const upload = await testApp.request(
-        `/v1/storage?name=${sha256}`,
-        {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/octet-stream" },
-          body: new Uint8Array(deliverable),
-        },
-        env,
-      );
-      expect(upload.status).toBe(201);
-      await expect(upload.json()).resolves.toMatchObject({ cid });
-      expect(uploads).toEqual(["test-key"]);
-
-      const download = await testApp.request(
-        `/v1/storage/${sha256}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
-        env,
-      );
-      expect(download.status).toBe(200);
-      expect(new Uint8Array(await download.arrayBuffer())).toEqual(new Uint8Array(deliverable));
-      expect(download.headers.get("X-IPFS-Cid")).toBe(cid);
-      setPrivyJwksUrl(null);
-    },
-  );
-});
-
-test("download with ?cid= skips pin resolution", async () => {
-  const { token, jwk } = await makeToken();
-
-  await withServer(
-    async (request, response) => {
-      if (request.url === "/jwks") {
-        response.writeHead(200, { "content-type": "application/json" });
-        response.end(JSON.stringify({ keys: [jwk] }));
-        return;
-      }
-      if (request.url === `/gateway/ipfs/${cid}?key=test-key`) {
-        response.writeHead(200, { "content-type": "application/octet-stream" });
-        response.end(deliverable);
-        return;
-      }
-      response.writeHead(404);
-      response.end();
-    },
-    async (url) => {
-      setPrivyJwksUrl(`${url.origin}/jwks`);
-      const download = await app.request(
-        `/v1/storage/${sha256}?cid=${cid}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
-        bindings(url.origin),
-      );
-      setPrivyJwksUrl(null);
-
-      expect(download.status).toBe(200);
-      expect(new Uint8Array(await download.arrayBuffer())).toEqual(new Uint8Array(deliverable));
-    },
-  );
-});
-
-test("requests without a token are rejected", async () => {
-  const response = await app.request(`/v1/storage/${sha256}`, {}, bindings("http://127.0.0.1:1"));
-  expect(response.status).toBe(401);
-});
-
-test("an unknown deliverable hash resolves to 404", async () => {
-  const { token, jwk } = await makeToken();
-
-  await withServer(
-    async (request, response) => {
-      if (request.url === "/jwks") {
-        response.writeHead(200, { "content-type": "application/json" });
-        response.end(JSON.stringify({ keys: [jwk] }));
-        return;
-      }
-      if (request.url === "/v1/pinning?pageNumber=1&perPage=100") {
-        response.writeHead(200, { "content-type": "application/json" });
-        response.end(JSON.stringify({ data: [], totalPages: 1 }));
-        return;
-      }
-      response.writeHead(404);
-      response.end();
-    },
-    async (url) => {
-      setPrivyJwksUrl(`${url.origin}/jwks`);
-      const response = await app.request(
-        `/v1/storage/${sha256}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
-        bindings(url.origin),
-      );
-      setPrivyJwksUrl(null);
-
-      expect(response.status).toBe(404);
-    },
-  );
-});
-
-test("duplicate pin names resolve to the newest pin", async () => {
-  const { token, jwk } = await makeToken();
-  const oldCid = "bafkreioldpin0000000000000000000000000000000000000000000000";
-  const newCid = "bafkreinewpin0000000000000000000000000000000000000000000000";
-  const newBytes = Buffer.from("newest ciphertext bytes");
-
-  await withServer(
-    async (request, response) => {
-      if (request.url === "/jwks") {
-        response.writeHead(200, { "content-type": "application/json" });
-        response.end(JSON.stringify({ keys: [jwk] }));
-        return;
-      }
-      if (request.url === "/v1/pinning?pageNumber=1&perPage=100") {
-        // Undocumented list order puts the newest first — the resolver must not
-        // rely on it, this pins the opposite order on purpose.
-        response.writeHead(200, { "content-type": "application/json" });
-        response.end(
-          JSON.stringify({
-            data: [
-              { cid: oldCid, name: sha256, createdAt: "2026-10-01T00:00:00Z" },
-              { cid: newCid, name: sha256, createdAt: "2026-10-06T00:00:00Z" },
-            ],
-            totalPages: 1,
-            totalItems: 2,
-          }),
-        );
-        return;
-      }
-      if (request.url === `/gateway/ipfs/${newCid}?key=test-key`) {
-        response.writeHead(200, { "content-type": "application/octet-stream" });
-        response.end(newBytes);
-        return;
-      }
-      response.writeHead(404);
-      response.end();
-    },
-    async (url) => {
-      setPrivyJwksUrl(`${url.origin}/jwks`);
-      const download = await app.request(
-        `/v1/storage/${sha256}`,
-        { headers: { Authorization: `Bearer ${token}` } },
-        bindings(url.origin),
-      );
-      setPrivyJwksUrl(null);
-
-      expect(download.status).toBe(200);
-      expect(download.headers.get("X-IPFS-Cid")).toBe(newCid);
-      expect(new Uint8Array(await download.arrayBuffer())).toEqual(new Uint8Array(newBytes));
-    },
-  );
-});
-
-test("a match on a later page resolves after scanning through page one", async () => {
-  const { token, jwk } = await makeToken();
-  const filler = Array.from({ length: 100 }, (_, index) => ({
-    cid: `bafkreifiller${index}`,
-    name: `0x${(index + 1).toString(16).padStart(64, "0")}`,
-    createdAt: "2026-10-01T00:00:00Z",
-  }));
-
-  await withServer(
-    async (request, response) => {
-      if (request.url === "/jwks") {
-        response.writeHead(200, { "content-type": "application/json" });
-        response.end(JSON.stringify({ keys: [jwk] }));
-        return;
-      }
-      if (request.url === "/v1/pinning?pageNumber=1&perPage=100") {
-        response.writeHead(200, { "content-type": "application/json" });
-        response.end(JSON.stringify({ data: filler, totalPages: 2, totalItems: 101 }));
-        return;
-      }
-      if (request.url === "/v1/pinning?pageNumber=2&perPage=100") {
-        response.writeHead(200, { "content-type": "application/json" });
-        response.end(
-          JSON.stringify({
-            data: [{ cid, name: sha256, createdAt: "2026-10-06T00:00:00Z" }],
-            totalPages: 2,
-            totalItems: 101,
-          }),
-        );
-        return;
-      }
-      if (request.url === `/gateway/ipfs/${cid}?key=test-key`) {
-        response.writeHead(200, { "content-type": "application/octet-stream" });
-        response.end(deliverable);
-        return;
-      }
-      response.writeHead(404);
-      response.end();
-    },
-    async (url) => {
-      setPrivyJwksUrl(`${url.origin}/jwks`);
-      const download = await app.request(
-        `/v1/storage/${sha256}`,
-        { headers: { Authorization: `Bearer ${token}` } },
-        bindings(url.origin),
-      );
-      setPrivyJwksUrl(null);
-
-      expect(download.status).toBe(200);
-      expect(download.headers.get("X-IPFS-Cid")).toBe(cid);
-    },
-  );
-});
-
-test("totalItems beyond the scanned window reports resolution exceeded, not 404", async () => {
-  const { token, jwk } = await makeToken();
-
-  await withServer(
-    async (request, response) => {
-      if (request.url === "/jwks") {
-        response.writeHead(200, { "content-type": "application/json" });
-        response.end(JSON.stringify({ keys: [jwk] }));
-        return;
-      }
-      if (request.url?.startsWith("/v1/pinning")) {
-        response.writeHead(200, { "content-type": "application/json" });
-        response.end(
-          JSON.stringify({
-            data: [],
-            totalPages: 20,
-            totalItems: 2000,
-          }),
-        );
-        return;
-      }
-      response.writeHead(404);
-      response.end();
-    },
-    async (url) => {
-      setPrivyJwksUrl(`${url.origin}/jwks`);
-      const response = await app.request(
-        `/v1/storage/${sha256}`,
-        { headers: { Authorization: `Bearer ${token}` } },
-        bindings(url.origin),
-      );
-      setPrivyJwksUrl(null);
-
-      expect(response.status).toBe(502);
-      await expect(response.json()).resolves.toMatchObject({
-        title: "Resolution window exceeded",
-      });
-    },
-  );
-});
-
-test("an undated same-name pin is unresolvable rather than first-match", async () => {
-  const { token, jwk } = await makeToken();
-
-  await withServer(
-    async (request, response) => {
-      if (request.url === "/jwks") {
-        response.writeHead(200, { "content-type": "application/json" });
-        response.end(JSON.stringify({ keys: [jwk] }));
-        return;
-      }
-      if (request.url === "/v1/pinning?pageNumber=1&perPage=100") {
-        response.writeHead(200, { "content-type": "application/json" });
-        response.end(
-          JSON.stringify({ data: [{ cid, name: sha256 }], totalPages: 1, totalItems: 1 }),
-        );
-        return;
-      }
-      response.writeHead(404);
-      response.end();
-    },
-    async (url) => {
-      setPrivyJwksUrl(`${url.origin}/jwks`);
-      const response = await app.request(
-        `/v1/storage/${sha256}`,
-        { headers: { Authorization: `Bearer ${token}` } },
-        bindings(url.origin),
-      );
-      setPrivyJwksUrl(null);
-
-      expect(response.status).toBe(502);
-      await expect(response.json()).resolves.toMatchObject({ title: "Unresolvable pin" });
-    },
-  );
-});
-
-test("a full-scan miss with a multi-page account returns 404, not window-exceeded", async () => {
-  const { token, jwk } = await makeToken();
-  // 150 pins over 2 pages, none matching: every pin IS scanned, so this must
-  // be a plain 404 — the stale-sentinel bug previously returned a 502 claiming
-  // a window was exceeded.
-  const filler = (count: number) =>
-    Array.from({ length: count }, (_, index) => ({
-      cid: `bafkreifiller${index}`,
-      name: `0x${(index + 1).toString(16).padStart(64, "0")}`,
-      createdAt: "2026-10-01T00:00:00Z",
-    }));
-
-  await withServer(
-    async (request, response) => {
-      if (request.url === "/jwks") {
-        response.writeHead(200, { "content-type": "application/json" });
-        response.end(JSON.stringify({ keys: [jwk] }));
-        return;
-      }
-      if (request.url === "/v1/pinning?pageNumber=1&perPage=100") {
-        response.writeHead(200, { "content-type": "application/json" });
-        response.end(JSON.stringify({ data: filler(100), totalPages: 2, totalItems: 150 }));
-        return;
-      }
-      if (request.url === "/v1/pinning?pageNumber=2&perPage=100") {
-        response.writeHead(200, { "content-type": "application/json" });
-        response.end(JSON.stringify({ data: filler(50), totalPages: 2, totalItems: 150 }));
-        return;
-      }
-      response.writeHead(404);
-      response.end();
-    },
-    async (url) => {
-      setPrivyJwksUrl(`${url.origin}/jwks`);
-      const response = await app.request(
-        `/v1/storage/${sha256}`,
-        { headers: { Authorization: `Bearer ${token}` } },
-        bindings(url.origin),
-      );
-      setPrivyJwksUrl(null);
-
-      expect(response.status).toBe(404);
-      await expect(response.json()).resolves.toMatchObject({ title: "Not found" });
-    },
-  );
-});
-
-test("a short page (perPage not honored) with matching totalItems still 404s", async () => {
-  const { token, jwk } = await makeToken();
-  // The backend returns fewer than perPage on page 1 and totalItems equals the
-  // returned count: the scan is complete even though 100 were requested.
-  await withServer(
-    async (request, response) => {
-      if (request.url === "/jwks") {
-        response.writeHead(200, { "content-type": "application/json" });
-        response.end(JSON.stringify({ keys: [jwk] }));
-        return;
-      }
-      if (request.url === "/v1/pinning?pageNumber=1&perPage=100") {
-        response.writeHead(200, { "content-type": "application/json" });
-        response.end(
-          JSON.stringify({
-            data: [
-              {
-                cid: "bafkreishortpage00000000000000000000000000000000000000000",
-                name: `0x${"11".repeat(32)}`,
-                createdAt: "2026-10-01T00:00:00Z",
-              },
-            ],
-            totalPages: 1,
-            totalItems: 1,
-          }),
-        );
-        return;
-      }
-      response.writeHead(404);
-      response.end();
-    },
-    async (url) => {
-      setPrivyJwksUrl(`${url.origin}/jwks`);
-      const response = await app.request(
-        `/v1/storage/${sha256}`,
-        { headers: { Authorization: `Bearer ${token}` } },
-        bindings(url.origin),
-      );
-      setPrivyJwksUrl(null);
-
-      expect(response.status).toBe(404);
-    },
-  );
-});
-
-test("a duplicate-name upload surfaces as 409 with pin detail", async () => {
-  const { token, jwk } = await makeToken();
-
-  await withServer(
-    async (request, response) => {
-      if (request.url === "/jwks") {
-        response.writeHead(200, { "content-type": "application/json" });
-        response.end(JSON.stringify({ keys: [jwk] }));
-        return;
-      }
-      if (request.url === "/v1/s3/put-object" && request.method === "POST") {
-        response.writeHead(400, { "content-type": "application/json" });
-        response.end(
-          JSON.stringify({
-            statusCode: 400,
-            message: "File with that name already exists in your account.",
-          }),
-        );
-        return;
-      }
-      response.writeHead(404);
-      response.end();
-    },
-    async (url) => {
-      setPrivyJwksUrl(`${url.origin}/jwks`);
-      const response = await app.request(
-        `/v1/storage?name=${sha256}`,
+        "/v1/storage?name=uuid-1",
         {
           method: "POST",
           headers: {
@@ -561,11 +141,87 @@ test("a duplicate-name upload surfaces as 409 with pin detail", async () => {
       );
       setPrivyJwksUrl(null);
 
-      expect(response.status).toBe(409);
-      await expect(response.json()).resolves.toMatchObject({
-        title: "Already pinned",
-        detail: `A deliverable with hash ${sha256} is already pinned; it cannot be re-uploaded.`,
-      });
+      expect(upload.status).toBe(201);
+      await expect(upload.json()).resolves.toMatchObject({ cid, name: "uuid-1" });
+      expect(uploads).toEqual(["test-key"]);
+    },
+  );
+});
+
+test("upload without a name generates one server-side", async () => {
+  const { token, jwk } = await makeToken();
+
+  await withServer(
+    async (request, response) => {
+      if (request.url === "/jwks") {
+        response.writeHead(200, { "content-type": "application/json" });
+        response.end(JSON.stringify({ keys: [jwk] }));
+        return;
+      }
+      if (request.url === "/v1/s3/put-object" && request.method === "POST") {
+        response.writeHead(201, { "content-type": "application/json" });
+        response.end(JSON.stringify({ pin: { cid, name: "generated" } }));
+        return;
+      }
+      response.writeHead(404);
+      response.end();
+    },
+    async (url) => {
+      setPrivyJwksUrl(`${url.origin}/jwks`);
+      const upload = await app.request(
+        "/v1/storage",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/octet-stream",
+          },
+          body: new Uint8Array(deliverable),
+        },
+        bindings(url.origin),
+      );
+      setPrivyJwksUrl(null);
+
+      expect(upload.status).toBe(201);
+    },
+  );
+});
+
+test("requests without a token are rejected", async () => {
+  const response = await app.request(
+    "/v1/storage?name=uuid-1",
+    { method: "POST", body: new Uint8Array(deliverable) },
+    bindings("http://127.0.0.1:1"),
+  );
+  expect(response.status).toBe(401);
+});
+
+test("an empty body is a 400", async () => {
+  const { token, jwk } = await makeToken();
+
+  await withServer(
+    async (request, response) => {
+      if (request.url === "/jwks") {
+        response.writeHead(200, { "content-type": "application/json" });
+        response.end(JSON.stringify({ keys: [jwk] }));
+        return;
+      }
+      response.writeHead(404);
+      response.end();
+    },
+    async (url) => {
+      setPrivyJwksUrl(`${url.origin}/jwks`);
+      const response = await app.request(
+        "/v1/storage?name=uuid-1",
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/octet-stream" },
+        },
+        bindings(url.origin),
+      );
+      setPrivyJwksUrl(null);
+
+      expect(response.status).toBe(400);
     },
   );
 });

@@ -10,7 +10,15 @@ import { CliError } from "../utils/errors.ts";
 // Kubo RPC API endpoint for self-hosted uploads (--api); the default path goes
 // through the Space Object API instead. The public gateways below serve
 // downloads for the --gateway path.
-const DEFAULT_GATEWAYS = ["https://ipfs.io", "https://dweb.link"];
+// The Space Object gateway is public and content-addressed: downloads fetch
+// bytes by CID with no account, no token, and no API involvement. The CLI
+// verifies the sha256 locally, so the gateway is not trusted — any gateway
+// serving the same CID works, and --gateway can point at a self-hosted one.
+export const GATEWAYS = [
+  "https://spaceobject.quicknode-ipfs.com",
+  "https://ipfs.io",
+  "https://dweb.link",
+];
 
 const STORAGE_DIR = path.join(os.homedir(), ".spaceobject", "sun", "storage");
 
@@ -52,6 +60,10 @@ export async function appendUploads(userId: string, records: UploadRecord[]): Pr
 
 export function findUpload(uploads: UploadRecord[], sha256: string): UploadRecord | undefined {
   return [...uploads].reverse().find((record) => record.sha256 === sha256);
+}
+
+export function findUploadByCid(uploads: UploadRecord[], cid: string): UploadRecord | undefined {
+  return [...uploads].reverse().find((record) => record.cid === cid);
 }
 
 // AES keys are irrecoverable (only ciphertext ever reaches the network), so
@@ -154,10 +166,10 @@ export async function uploadBytes(name: string, bytes: Buffer, apiUrl: string): 
   return result.data.Hash;
 }
 
-// Downloads try each public gateway in turn; content addressing means any of
+// Downloads try each gateway in turn; content addressing means any of
 // them serves the same bytes for a CID, so the first hit wins.
 export async function downloadBytes(cid: string, gatewayOverride?: string): Promise<Buffer> {
-  const gateways = gatewayOverride ? [gatewayOverride] : DEFAULT_GATEWAYS;
+  const gateways = gatewayOverride ? [gatewayOverride] : GATEWAYS;
   const bytes = await Promise.all(
     gateways.map((gateway) =>
       fetch(`${gateway.replace(/\/+$/, "")}/ipfs/${cid}`)
@@ -176,35 +188,32 @@ export async function downloadBytes(cid: string, gatewayOverride?: string): Prom
   return bytes;
 }
 
-// The Space Object API wraps QuickNode: uploads pin bytes under the deliverable
-// hash as the pin name, and downloads resolve that name back to a CID. The
-// QuickNode credentials never reach the CLI — only the Privy token every
-// command already carries.
+// The Space Object API wraps QuickNode for uploads only: bytes pin under a
+// fresh UUID pin name, so re-uploads (including --encrypt re-uploads with new
+// ciphertext) never collide with existing pins. The QuickNode credentials
+// never reach the CLI — only the Privy token every command already carries.
+// Downloads do not use the API: the gateway serves bytes by CID, public and
+// content-addressed, and the CLI verifies the sha256 locally.
 export async function uploadDeliverable(
   bytes: Buffer,
-  sha256: string,
   accessToken: string | null,
   baseUrl: string = SPACE_OBJECT_API_URL,
 ): Promise<string> {
   if (accessToken === null)
     throw new CliError("NOT_LOGGED_IN", "Not logged in.", "Run `sun auth login`.");
 
-  const response = await fetch(`${baseUrl.replace(/\/+$/, "")}/v1/storage?name=${sha256}`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/octet-stream",
+  const response = await fetch(
+    `${baseUrl.replace(/\/+$/, "")}/v1/storage?name=${crypto.randomUUID()}`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/octet-stream",
+      },
+      body: new Uint8Array(bytes),
     },
-    body: new Uint8Array(bytes),
-  }).catch(() => null);
-  if (response === null || !response.ok) {
-    if (response?.status === 409)
-      throw new CliError(
-        "STORAGE_ALREADY_PINNED",
-        `A deliverable with hash ${sha256} is already pinned.`,
-        "The same file was uploaded before. Encrypted files cannot be re-uploaded (the pin cannot be replaced); use the existing pin, or change the file so its hash changes.",
-      );
-
+  ).catch(() => null);
+  if (response === null || !response.ok)
     throw new CliError(
       "STORAGE_UPLOAD_FAILED",
       `The Space Object API rejected the upload${response ? `: HTTP ${response.status}` : "."}`,
@@ -212,7 +221,6 @@ export async function uploadDeliverable(
         ? "Run `sun auth login` and try again."
         : "Check your connection, then retry.",
     );
-  }
 
   const result = await response
     .json()
@@ -225,41 +233,4 @@ export async function uploadDeliverable(
     );
 
   return result.data.cid;
-}
-
-export async function downloadDeliverable(
-  sha256: string,
-  cid: string | undefined,
-  accessToken: string | null,
-  baseUrl: string = SPACE_OBJECT_API_URL,
-): Promise<{ stored: Buffer; cid: string | null }> {
-  if (accessToken === null)
-    throw new CliError("NOT_LOGGED_IN", "Not logged in.", "Run `sun auth login`.");
-
-  const response = await fetch(
-    `${baseUrl.replace(/\/+$/, "")}/v1/storage/${sha256}${cid ? `?cid=${encodeURIComponent(cid)}` : ""}`,
-    { headers: { Authorization: `Bearer ${accessToken}` } },
-  ).catch(() => null);
-  if (response === null)
-    throw new CliError(
-      "STORAGE_DOWNLOAD_FAILED",
-      `Could not reach the Space Object API at ${baseUrl}.`,
-      "Check your network connection, then run the command again.",
-    );
-  if (response.status === 404)
-    throw new CliError(
-      "STORAGE_NOT_FOUND",
-      `No deliverable with hash ${sha256} on the network.`,
-      "Check the hash; the provider submits it with `sun agent job deliver`.",
-    );
-  if (!response.ok)
-    throw new CliError(
-      "STORAGE_DOWNLOAD_FAILED",
-      `The Space Object API failed: HTTP ${response.status}.`,
-    );
-
-  return {
-    stored: Buffer.from(await response.arrayBuffer()),
-    cid: response.headers.get("X-IPFS-Cid") ?? null,
-  };
 }

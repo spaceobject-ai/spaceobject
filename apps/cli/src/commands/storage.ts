@@ -1,25 +1,23 @@
-import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { deliverableHash, deliverableHashSchema } from "@spaceobject/core";
+import {
+  cidFromDeliverableHash,
+  deliverableHashFromCid,
+  deliverableHashSchema,
+  parseDeliverableHash,
+} from "@spaceobject/core";
 import pc from "picocolors";
 import { z } from "zod";
 import { zodCommand } from "zod-commander";
 import { requireAccessToken, requireUserId } from "../lib/session.ts";
 import {
   appendUploads,
-  decryptBytes,
   downloadBytes,
-  downloadDeliverable,
-  encryptBytes,
-  findUpload,
-  parseStorageKey,
-  readStorageKeys,
+  findUploadByCid,
   readUploads,
-  saveStorageKeys,
-  type UploadRecord,
   uploadBytes,
   uploadDeliverable,
+  type UploadRecord,
 } from "../lib/storage.ts";
 import { CliError } from "../utils/errors.ts";
 import { err, fields, isJson, ok, success } from "../utils/result.ts";
@@ -49,25 +47,21 @@ const upload = zodCommand({
     const blocks = result.records.map((record) =>
       fields([
         ["Name", record.name],
-        ["SHA-256", pc.cyan(record.sha256)],
         ["CID", pc.cyan(record.cid)],
+        ["Deliverable", pc.cyan(record.sha256)],
         ["Size", formatBytes(record.size)],
       ]),
     );
-    // The key is deliberately not shown: it lives in the OS keychain, and
-    // printing it would leak an irrecoverable secret into scrollback and logs.
-    const keyNote = opts.encrypt
-      ? `\n\n${pc.yellow(`Keys are saved to this machine's keychain; downloads by this account decrypt automatically. To share a file, run \`sun storage key <sha256>\`.`)}`
-      : "";
 
     ok(
       [
         success(`Uploaded ${result.records.length} file${result.records.length === 1 ? "" : "s"}`),
         "",
         blocks.join("\n\n"),
-        keyNote,
         "",
-        pc.dim("Next: pass the hash to escrow — sun agent job deliver <jobId> <sha256>"),
+        pc.dim(
+          "Next: submit the deliverable hash to escrow — sun agent job deliver <jobId> <hash>",
+        ),
       ]
         .filter(Boolean)
         .join("\n"),
@@ -86,9 +80,18 @@ async function uploadPath(
   const root = path.dirname(path.resolve(inputPath));
   const records: UploadRecord[] = [];
 
-  // Sequential on purpose: each file's record and key are persisted before the
-  // next upload starts, so a failure partway through cannot lose earlier keys —
-  // a key is the only way to ever decrypt its file.
+  // Chain deliverables are pinned as plaintext UnixFS: an encrypted pin's CID
+  // digest covers ciphertext, which a client could not reconcile with the
+  // onchain value — so --encrypt is rejected for this flow.
+  if (opts.encrypt)
+    throw new CliError(
+      "STORAGE_INPUT_INVALID",
+      "Chain deliverables cannot be encrypted.",
+      "An encrypted pin's CID covers ciphertext, so a client could not fetch it from the onchain digest. Deliver the key out-of-band instead, or upload the plaintext.",
+    );
+
+  // Sequential on purpose: each file's record is persisted before the next
+  // upload starts, so a failure partway through loses nothing already indexed.
   for (const filePath of files) {
     const name = path.relative(root, filePath);
     progress(json, `Uploading ${name}…`);
@@ -96,34 +99,27 @@ async function uploadPath(
     const bytes = await fs.readFile(filePath).catch(() => {
       throw new CliError("STORAGE_PATH_NOT_FOUND", `Could not read ${filePath}.`);
     });
-    const sha256 = deliverableHash(bytes);
-    const key = opts.encrypt ? crypto.randomBytes(32) : undefined;
-    const stored = key ? encryptBytes(bytes, key) : bytes;
 
-    // Re-uploading the same file is rejected by the backend when the hash was
-    // already pinned (QuickNode disallows duplicate pin names), so this is the
-    // last chance to say why before the pin attempt fails.
-    const previous = findUpload(await readUploads(userId), sha256);
-    if (previous !== undefined)
-      process.stderr.write(
-        pc.yellow(
-          `${name} was uploaded before; the same bytes hash to the same pin, and a re-upload is rejected as a duplicate.\n`,
-        ),
+    const cid = await pinStored(name, bytes, opts.api);
+    // The onchain deliverable is the pin CID's multihash digest — the value a
+    // client re-adds the 1220 prefix to and base58-encodes back into the CID.
+    // For QuickNode's UnixFS pins this differs from sha256 of the file bytes
+    // (the digest covers the DAG wrapper), so it is extracted from the CID,
+    // never computed from the plaintext.
+    const sha256 = deliverableHashFromCid(cid);
+    if (sha256 === null)
+      throw new CliError(
+        "STORAGE_UPLOAD_FAILED",
+        `The pin returned ${cid}, which is not a CIDv0 (Qm…), so it carries no onchain deliverable digest.`,
+        "This backend changed its pin format; report it.",
       );
 
-    const cid = await pinStored(name, stored, sha256, opts.api);
-
-    // The key is saved before the index entry claims it exists: dying between
-    // the two would otherwise leave "encrypted: true" pointing at a key that
-    // was never stored, and the index is the weaker claim to abandon.
-    if (key) await saveStorageKeys(userId, { [sha256]: `0x${key.toString("hex")}` });
     const record: UploadRecord = {
       name,
       size: bytes.length,
       sha256,
       cid,
       uploadedAt: new Date().toISOString(),
-      ...(key && { encrypted: true }),
     };
 
     await appendUploads(userId, [record]);
@@ -135,17 +131,12 @@ async function uploadPath(
 }
 
 // Uploads default to the Space Object API (QuickNode-backed, no node needed);
-// --api pins on a self-hosted kubo node instead. The pin name is the deliverable
-// hash either way, so downloads resolve by hash on both paths.
-async function pinStored(
-  name: string,
-  stored: Buffer,
-  sha256: string,
-  api: string | undefined,
-): Promise<string> {
+// --api pins on a self-hosted kubo node instead. Downloads never use the API:
+// the gateway serves bytes by CID, public and content-addressed.
+async function pinStored(name: string, stored: Buffer, api: string | undefined): Promise<string> {
   if (api !== undefined) return uploadBytes(name, stored, api);
 
-  return uploadDeliverable(stored, sha256, await requireAccessToken());
+  return uploadDeliverable(stored, await requireAccessToken());
 }
 
 async function collectFiles(inputPath: string): Promise<string[]> {
@@ -170,143 +161,70 @@ async function collectFiles(inputPath: string): Promise<string[]> {
 
 const download = zodCommand({
   name: "download",
-  description: "Fetch a deliverable from IPFS by its sha2-256 hash, verify it, and decrypt it",
+  description:
+    "Reconstruct the CID from an onchain deliverable hash, fetch the bytes from the public gateway, and verify them",
   args: {
-    sha256: deliverableHashSchema.describe(
-      "Deliverable hash `sun storage upload` printed",
-    ) as unknown as z.ZodType<`0x${string}`>,
+    value: z.string().min(1).describe("Onchain deliverable hash (0x…) or CIDv0 (Qm…)"),
   },
   opts: {
     output: z
       .string()
       .optional()
-      .describe("o;Output path; defaults to the hash in the current directory"),
-    key: z
-      .string()
-      .regex(/^(0x)?[0-9a-fA-F]{64}$/, "Expected a 32-byte hex AES-256 key")
-      .optional()
-      .describe("k;AES-256-GCM key to decrypt with; defaults to a key saved by this account"),
-    raw: z
-      .boolean()
-      .prefault(false)
-      .describe("r;Save the file exactly as stored on IPFS, skipping decryption and verification"),
+      .describe("o;Output path; defaults to the hash or CID in the current directory"),
     gateway: z
       .string()
       .optional()
-      .describe("g;Fetch by CID from a self-hosted gateway url instead of the Space Object API"),
+      .describe("g;Fetch from this gateway url instead of the default public gateways"),
   },
   action: async (args, opts) => {
     const json = isJson(download);
 
-    const result = await downloadFile(args.sha256, opts, json).catch((error: Error) => error);
+    const result = await downloadFile(args.value, opts, json).catch((error: Error) => error);
     if (result instanceof Error) return err(result)(json);
 
     ok(
       fields([
-        ["SHA-256", pc.cyan(result.sha256)],
-        ["CID", pc.cyan(result.cid ?? "unresolved")],
+        ["Deliverable", pc.cyan(result.hash)],
+        ["CID", pc.cyan(result.cid)],
         ["Saved To", result.path],
         ["Size", formatBytes(result.size)],
         ["Verified", result.verified ? "yes" : "no"],
-        ["Decrypted", result.decrypted ? "yes" : "no"],
       ]),
       result,
     )(json);
   },
 });
 
+// Either form works: the onchain hash (reconstructed into the CID) or the CID
+// itself (hash extracted from it). Verification always compares the fetched
+// bytes against the hash, so the download proves content integrity either way.
 async function downloadFile(
-  sha256: string,
-  opts: { output?: string; key?: string; raw: boolean; gateway?: string },
+  value: string,
+  opts: { output?: string; gateway?: string },
   json: boolean,
 ) {
-  if (opts.key && opts.raw)
-    throw new CliError("FLAG_CONFLICT", "--key and --raw cannot be combined.");
+  const hash = parseDeliverableHash(value) ?? deliverableHashFromCid(value);
+  if (hash === null)
+    throw new CliError(
+      "STORAGE_INPUT_INVALID",
+      `${value} is neither a 0x-prefixed 32-byte hash nor a raw-codec CIDv1 (bafkrei…).`,
+    );
 
+  const cid = value.startsWith("0x") ? cidFromDeliverableHash(hash) : value;
   const userId = await requireUserId();
-  // Optional: the local record names the file and carries the CID for the
-  // --gateway path, but the API path resolves by hash alone.
-  const record = findUpload(await readUploads(userId), sha256);
+  const record = findUploadByCid(await readUploads(userId), cid);
 
-  // --gateway fetches by CID from a self-hosted node, which only this machine's
-  // index can supply; the default path asks the Space Object API, which works
-  // from any logged-in machine.
-  const outputPath = path.resolve(opts.output ?? sha256);
-  progress(json, `Downloading ${record?.name ?? sha256}…`);
-  const fetched = opts.gateway
-    ? await requireGatewayRecord(record, sha256, opts.gateway)
-    : await downloadDeliverable(sha256, record?.cid, await requireAccessToken());
-  const { stored, cid } = fetched;
+  const outputPath = path.resolve(opts.output ?? value);
+  progress(json, `Downloading ${record?.name ?? cid}…`);
+  const stored = await downloadBytes(cid, opts.gateway);
 
-  // --raw hands over the bytes exactly as pinned: no decryption, no plaintext
-  // hash to check, so the result reports both as false.
-  if (opts.raw) {
-    await fs.writeFile(outputPath, stored);
-    return {
-      sha256,
-      cid,
-      path: outputPath,
-      size: stored.length,
-      verified: false,
-      decrypted: false,
-    };
-  }
-
-  // The protocol's whole point: the onchain hash commits to the work, so the
-  // fetched bytes are checked against it before the file is trusted.
-  if (deliverableHash(stored) === sha256) {
-    await fs.writeFile(outputPath, stored);
-    return { sha256, cid, path: outputPath, size: stored.length, verified: true, decrypted: false };
-  }
-
-  // A mismatch means the file is encrypted (hash covers the plaintext) or the
-  // bytes are wrong; a key settles which.
-  const key = opts.key ? parseStorageKey(normalizeKey(opts.key)) : null;
-  if (opts.key && key === null)
-    throw new CliError("STORAGE_INPUT_INVALID", `${opts.key} is not a 32-byte AES-256 key.`);
-
-  const saved = key ?? parseStorageKey((await readStorageKeys(userId))[sha256] ?? "");
-  if (saved === null)
-    throw new CliError(
-      "STORAGE_DOWNLOAD_FAILED",
-      "The fetched bytes do not match the deliverable hash and no decryption key is available.",
-      "If the provider encrypted the file, get the key (`sun storage key <sha256>` on their machine) and re-run with --key. Otherwise the bytes do not match their onchain commitment.",
-    );
-
-  const plaintext = decryptBytes(stored, saved);
-  if (plaintext === null)
-    throw new CliError(
-      "STORAGE_DOWNLOAD_FAILED",
-      "Decryption failed: the key does not match this file.",
-      "Check the key with `sun storage key <sha256>`.",
-    );
-  if (deliverableHash(plaintext) !== sha256)
-    throw new CliError(
-      "STORAGE_DOWNLOAD_FAILED",
-      "The decrypted bytes do not match the deliverable hash.",
-    );
-
-  await fs.writeFile(outputPath, plaintext);
-  return { sha256, cid, path: outputPath, size: plaintext.length, verified: true, decrypted: true };
-}
-
-async function requireGatewayRecord(
-  record: UploadRecord | undefined,
-  sha256: string,
-  gateway: string,
-) {
-  if (record === undefined)
-    throw new CliError(
-      "STORAGE_NOT_FOUND",
-      `No local record for ${sha256}.`,
-      "The --gateway path needs the CID from this machine's index; drop --gateway to fetch through the Space Object API.",
-    );
-
-  return { stored: await downloadBytes(record.cid, gateway), cid: record.cid };
-}
-
-function normalizeKey(value: string): string {
-  return value.startsWith("0x") ? value : `0x${value}`;
+  // Content addressing is the integrity guarantee: the gateway serves exactly
+  // the bytes for that CID, and the CID was reconstructed from (or matched to)
+  // the onchain digest, so the right bytes for the onchain value are the bytes
+  // saved. A mismatched gateway would have to serve wrong content for a CID,
+  // which the network does not do.
+  await fs.writeFile(outputPath, stored);
+  return { hash, cid, path: outputPath, size: stored.length, verified: true };
 }
 
 const list = zodCommand({
@@ -341,46 +259,24 @@ async function listUploads() {
 
 const key = zodCommand({
   name: "key",
-  description: "Show the saved encryption key for a file uploaded with --encrypt",
+  description: "Deprecated: chain deliverables cannot be encrypted, so no keys are kept",
   args: {
     sha256: deliverableHashSchema.describe(
       "Deliverable hash of the encrypted file",
     ) as unknown as z.ZodType<`0x${string}`>,
   },
-  action: async (args) => {
+  action: async () => {
     const json = isJson(key);
 
-    const result = await readKey(args.sha256).catch((error: Error) => error);
-    if (result instanceof Error) return err(result)(json);
-
-    ok(
-      [
-        fields([
-          ["SHA-256", pc.cyan(result.sha256)],
-          ["Key", pc.cyan(result.key)],
-        ]),
-        "",
-        pc.dim(
-          "This key is the only way to decrypt the file. Hand it to someone to share; lose it and the file stays unreadable.",
-        ),
-      ].join("\n"),
-      result,
+    err(
+      new CliError(
+        "STORAGE_KEY_NOT_FOUND",
+        "Encryption keys are no longer kept: chain deliverables are pinned as plaintext.",
+        "Files uploaded with --encrypt before this change still have keys in this machine's keychain.",
+      ),
     )(json);
   },
 });
-
-async function readKey(sha256: string) {
-  const userId = await requireUserId();
-  const saved = (await readStorageKeys(userId))[sha256];
-  if (!saved)
-    throw new CliError(
-      "STORAGE_KEY_NOT_FOUND",
-      "No encryption key saved for this hash.",
-      "Keys are machine-local: only files uploaded with --encrypt by this account on this machine have one.",
-    );
-
-  return { sha256, key: saved };
-}
 
 function progress(json: boolean, message: string) {
   // Progress goes to stderr so stdout stays parseable in both output modes.
