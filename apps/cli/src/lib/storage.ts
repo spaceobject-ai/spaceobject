@@ -197,7 +197,14 @@ export async function uploadDeliverable(
     },
     body: new Uint8Array(bytes),
   }).catch(() => null);
-  if (response === null || !response.ok)
+  if (response === null || !response.ok) {
+    if (response?.status === 409)
+      throw new CliError(
+        "STORAGE_ALREADY_PINNED",
+        `A deliverable with hash ${sha256} is already pinned.`,
+        "The same file was uploaded before. Encrypted files cannot be re-uploaded (the pin cannot be replaced); use the existing pin, or change the file so its hash changes.",
+      );
+
     throw new CliError(
       "STORAGE_UPLOAD_FAILED",
       `The Space Object API rejected the upload${response ? `: HTTP ${response.status}` : "."}`,
@@ -205,6 +212,7 @@ export async function uploadDeliverable(
         ? "Run `sun auth login` and try again."
         : "Check your connection, then retry.",
     );
+  }
 
   const result = await response
     .json()

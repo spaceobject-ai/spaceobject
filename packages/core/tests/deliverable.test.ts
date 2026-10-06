@@ -25,6 +25,12 @@ test("parses a valid deliverable hash", () => {
   );
 });
 
+test("normalizes uppercase hex to lowercase", () => {
+  expect(
+    parseDeliverableHash("0xB94D27B9934D3E08A52E52D7DA7DABFAC484EFE37A5380EE9088F7ACE2EFCDE9"),
+  ).toBe("0xb94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9");
+});
+
 test("rejects values that are not 32-byte 0x hex", () => {
   expect(
     parseDeliverableHash("bafkreigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi"),

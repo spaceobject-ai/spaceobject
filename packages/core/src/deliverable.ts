@@ -10,9 +10,16 @@ export function deliverableHash(bytes: Uint8Array): `0x${string}` {
   return `0x${createHash("sha256").update(bytes).digest("hex")}`;
 }
 
+// Uppercase hex is accepted and normalized to lowercase here — the single
+// boundary where a hash enters the system — because every downstream
+// comparison (pin-name match, verify-before-save) is case-sensitive against
+// deliverableHash's lowercase output.
 export const deliverableHashSchema = z
   .string()
-  .regex(/^0x[0-9a-fA-F]{64}$/, "Expected a 0x-prefixed 32-byte sha2-256 hash");
+  .regex(/^0x[0-9a-fA-F]{64}$/, "Expected a 0x-prefixed 32-byte sha2-256 hash")
+  .transform((value) => value.toLowerCase());
+
+export type DeliverableHash = z.infer<typeof deliverableHashSchema>;
 
 /** Parses a deliverable hash, or returns null when it is not 32-byte hex. */
 export function parseDeliverableHash(value: string): `0x${string}` | null {

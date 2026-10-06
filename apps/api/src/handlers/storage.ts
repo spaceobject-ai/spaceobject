@@ -23,7 +23,9 @@ export const uploadStorageRoute = createRoute({
       description: "Pinned",
       content: { "application/json": { schema: uploadStorageOutputSchema } },
     },
+    400: problemDetailsResponse(400),
     401: problemDetailsResponse(401),
+    409: problemDetailsResponse(409),
     502: problemDetailsResponse(502),
   },
 });
@@ -51,14 +53,24 @@ const quicknodeUploadSchema = z.object({
 });
 
 const pinsSchema = z.object({
-  data: z.array(z.object({ cid: z.string().min(1), name: z.string() })),
+  data: z.array(
+    z.object({
+      cid: z.string().min(1),
+      name: z.string(),
+      // Present on list responses; older pins may lack it.
+      createdAt: z.string().optional(),
+    }),
+  ),
   totalPages: z.coerce.number().optional(),
+  totalItems: z.coerce.number().optional(),
 });
 
 // QuickNode is the only database: pins are stored under the deliverable hash as
 // their name, so a stateless download resolves a hash back to its CID by
-// listing pins. The page cap bounds a hostile pin count; a miss is a 404.
+// listing pins. The page cap bounds a hostile pin count; exhausting it is
+// reported as a distinct error so "not pinned" stays trustworthy.
 const RESOLVE_PAGE_LIMIT = 10;
+const RESOLVE_PAGE_SIZE = 100;
 
 export const storageHandlers = new OpenAPIHono<Env>()
   .openapi(uploadStorageRoute, async (c) => {
@@ -83,13 +95,29 @@ export const storageHandlers = new OpenAPIHono<Env>()
       `${c.env.QUICKNODE_IPFS_API_URL.replace(/\/+$/, "")}/v1/s3/put-object`,
       { method: "POST", headers: { "x-api-key": c.env.QUICKNODE_IPFS_API_KEY }, body: form },
     ).catch(() => null);
-    if (response === null || !response.ok)
+    if (response === null || !response.ok) {
+      // QuickNode rejects duplicate pin names outright, so an existing pin
+      // under this hash surfaces as 409 — the hash is already pinned, and a
+      // re-upload (which --encrypt makes desirable) cannot replace it.
+      const duplicate =
+        response !== null &&
+        response.status === 400 &&
+        (
+          await response
+            .json()
+            .then((value) => JSON.stringify(value))
+            .catch(() => "")
+        ).includes("already exists");
+
       throw problemDetails({
-        status: 502,
-        title: "Bad gateway",
-        detail: "QuickNode rejected the upload.",
+        status: duplicate ? 409 : 502,
+        title: duplicate ? "Already pinned" : "Bad gateway",
+        detail: duplicate
+          ? `A deliverable with hash ${name} is already pinned; it cannot be re-uploaded.`
+          : "QuickNode rejected the upload.",
         type: "Storage",
       });
+    }
 
     const result = quicknodeUploadSchema.safeParse(await response.json().catch(() => null));
     if (!result.success)
@@ -130,10 +158,19 @@ export const storageHandlers = new OpenAPIHono<Env>()
     });
   });
 
+// Re-uploads pin new ciphertext under the same name (fresh AES key per --encrypt
+// upload), so duplicates are routine: all matches are collected and the newest
+// pin wins, pairing with the newest keychain key on the uploader's machine.
+// Undated pins lose to any dated match — QuickNode reports createdAt on pins,
+// so an undated same-name pin is a pre-tracking artifact, not the live one.
 async function resolveCid(env: Env["Bindings"], sha256: string): Promise<string> {
+  let newest: { cid: string; createdAt: string } | null = null;
+  let sawUndated = false;
+  let scannedLimit: number | null = null;
+
   for (let page = 1; page <= RESOLVE_PAGE_LIMIT; page += 1) {
     const pins = await fetch(
-      `${env.QUICKNODE_IPFS_API_URL.replace(/\/+$/, "")}/v1/pinning?pageNumber=${page}&perPage=100`,
+      `${env.QUICKNODE_IPFS_API_URL.replace(/\/+$/, "")}/v1/pinning?pageNumber=${page}&perPage=${RESOLVE_PAGE_SIZE}`,
       { headers: { "x-api-key": env.QUICKNODE_IPFS_API_KEY } },
     )
       .then((response) => (response.ok ? response.json() : null))
@@ -148,10 +185,41 @@ async function resolveCid(env: Env["Bindings"], sha256: string): Promise<string>
         type: "Storage",
       });
 
-    const found = pins.data.data.find((pin) => pin.name === sha256);
-    if (found) return found.cid;
-    if (page >= (pins.data.totalPages ?? page)) break;
+    for (const pin of pins.data.data) {
+      if (pin.name !== sha256) continue;
+      if (pin.createdAt === undefined) {
+        sawUndated = true;
+        continue;
+      }
+      if (newest === null || pin.createdAt > newest.createdAt)
+        newest = { cid: pin.cid, createdAt: pin.createdAt };
+    }
+
+    const totalPages = pins.data.totalPages ?? page;
+    // totalItems beyond the scanned window means a matching pin may exist past
+    // the page cap; that is unresolvable-by-hash, not "not pinned".
+    scannedLimit =
+      pins.data.totalItems !== undefined && pins.data.totalItems > page * RESOLVE_PAGE_SIZE
+        ? pins.data.totalItems
+        : scannedLimit;
+    if (page >= totalPages) break;
   }
+
+  if (newest !== null) return newest.cid;
+  if (sawUndated)
+    throw problemDetails({
+      status: 502,
+      title: "Unresolvable pin",
+      detail: `Pin(s) named ${sha256} exist without timestamps, so the latest cannot be selected.`,
+      type: "Storage",
+    });
+  if (scannedLimit !== null)
+    throw problemDetails({
+      status: 502,
+      title: "Resolution window exceeded",
+      detail: `No pin named ${sha256} within the most recent ${RESOLVE_PAGE_LIMIT * RESOLVE_PAGE_SIZE} of ${scannedLimit} pins.`,
+      type: "Storage",
+    });
 
   throw problemDetails({
     status: 404,

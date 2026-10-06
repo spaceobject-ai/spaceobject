@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { deliverableHash } from "@spaceobject/core";
+import { deliverableHash, deliverableHashSchema } from "@spaceobject/core";
 import pc from "picocolors";
 import { z } from "zod";
 import { zodCommand } from "zod-commander";
@@ -100,7 +100,23 @@ async function uploadPath(
     const key = opts.encrypt ? crypto.randomBytes(32) : undefined;
     const stored = key ? encryptBytes(bytes, key) : bytes;
 
+    // Re-uploading the same file is rejected by the backend when the hash was
+    // already pinned (QuickNode disallows duplicate pin names), so this is the
+    // last chance to say why before the pin attempt fails.
+    const previous = findUpload(await readUploads(userId), sha256);
+    if (previous !== undefined)
+      process.stderr.write(
+        pc.yellow(
+          `${name} was uploaded before; the same bytes hash to the same pin, and a re-upload is rejected as a duplicate.\n`,
+        ),
+      );
+
     const cid = await pinStored(name, stored, sha256, opts.api);
+
+    // The key is saved before the index entry claims it exists: dying between
+    // the two would otherwise leave "encrypted: true" pointing at a key that
+    // was never stored, and the index is the weaker claim to abandon.
+    if (key) await saveStorageKeys(userId, { [sha256]: `0x${key.toString("hex")}` });
     const record: UploadRecord = {
       name,
       size: bytes.length,
@@ -111,7 +127,6 @@ async function uploadPath(
     };
 
     await appendUploads(userId, [record]);
-    if (key) await saveStorageKeys(userId, { [sha256]: `0x${key.toString("hex")}` });
 
     records.push(record);
   }
@@ -157,10 +172,9 @@ const download = zodCommand({
   name: "download",
   description: "Fetch a deliverable from IPFS by its sha2-256 hash, verify it, and decrypt it",
   args: {
-    sha256: z
-      .string()
-      .regex(/^0x[0-9a-fA-F]{64}$/, "Expected a 0x-prefixed 32-byte sha2-256 hash")
-      .describe("Deliverable hash `sun storage upload` printed"),
+    sha256: deliverableHashSchema.describe(
+      "Deliverable hash `sun storage upload` printed",
+    ) as unknown as z.ZodType<`0x${string}`>,
   },
   opts: {
     output: z
@@ -217,12 +231,11 @@ async function downloadFile(
   // --gateway fetches by CID from a self-hosted node, which only this machine's
   // index can supply; the default path asks the Space Object API, which works
   // from any logged-in machine.
+  const outputPath = path.resolve(opts.output ?? sha256);
+  progress(json, `Downloading ${record?.name ?? sha256}…`);
   const fetched = opts.gateway
     ? await requireGatewayRecord(record, sha256, opts.gateway)
     : await downloadDeliverable(sha256, record?.cid, await requireAccessToken());
-
-  const outputPath = path.resolve(opts.output ?? sha256);
-  progress(json, `Downloading ${record?.name ?? sha256}…`);
   const { stored, cid } = fetched;
 
   // --raw hands over the bytes exactly as pinned: no decryption, no plaintext
@@ -330,10 +343,9 @@ const key = zodCommand({
   name: "key",
   description: "Show the saved encryption key for a file uploaded with --encrypt",
   args: {
-    sha256: z
-      .string()
-      .regex(/^0x[0-9a-fA-F]{64}$/, "Expected a 0x-prefixed 32-byte sha2-256 hash")
-      .describe("Deliverable hash of the encrypted file"),
+    sha256: deliverableHashSchema.describe(
+      "Deliverable hash of the encrypted file",
+    ) as unknown as z.ZodType<`0x${string}`>,
   },
   action: async (args) => {
     const json = isJson(key);
