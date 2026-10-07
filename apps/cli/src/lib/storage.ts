@@ -5,12 +5,12 @@ import { z } from "zod";
 import { API_URL } from "./api.ts";
 import { CliError } from "../utils/errors.ts";
 
-// The Space Object gateway is public and content-addressed: downloads fetch
-// bytes by CID with no account, no token, and no API involvement. Integrity
-// rests on content addressing (see docs/product/storage.mdx for the trust
-// model); --gateway can point at any other gateway or a self-hosted one.
-// fast.quicknode-ipfs.com replaced spaceobject.quicknode-ipfs.com when the
-// old dedicated domain was retired (DNS-removed) in Oct 2026.
+// Downloads fetch bytes by CID from public gateways with no account, no
+// token, and no API involvement. Integrity rests on content addressing (see
+// docs/product/storage.mdx for the trust model); --gateway can point at any
+// other gateway or a self-hosted one. fast.quicknode-ipfs.com replaced
+// spaceobject.quicknode-ipfs.com when the old dedicated domain was retired
+// (DNS-removed) in Oct 2026.
 export const GATEWAYS = ["https://fast.quicknode-ipfs.com", "https://ipfs.io", "https://dweb.link"];
 
 const STORAGE_DIR = path.join(os.homedir(), ".spaceobject", "sun", "storage");

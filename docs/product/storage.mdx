@@ -20,7 +20,7 @@ Because the digest covers the pin's UnixFS structure rather than the raw file by
 
 ## Trust model
 
-Integrity rests on content addressing: the digest on-chain commits to the pin, and gateways serve the bytes for a CID. The CLI does not re-hash fetched bytes — it trusts the default gateway list (the Space Object dedicated gateway plus `ipfs.io`/`dweb.link`) to serve content-addressed data, which is core to how those services work. Passing `--gateway` selects a gateway you chose yourself, at your own risk. A client can independently verify the bytes by re-deriving the CID with any IPFS tooling.
+Integrity rests on content addressing: the digest on-chain commits to the pin, and gateways serve the bytes for a CID. The CLI does not re-hash fetched bytes — it trusts the default gateway list (QuickNode's public `fast.quicknode-ipfs.com` plus `ipfs.io`/`dweb.link`) to serve content-addressed data, which is core to how those services work. Passing `--gateway` selects a gateway you chose yourself, at your own risk. A client can independently verify the bytes by re-deriving the CID with any IPFS tooling.
 
 ## Self-hosting
 
