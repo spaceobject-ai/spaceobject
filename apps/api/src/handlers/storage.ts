@@ -4,8 +4,9 @@ import { problemDetailsResponse } from "hono-problem-details/openapi";
 import { v7 as uuidv7 } from "uuid";
 import { z } from "zod";
 
+import { PRIVY_APP_ID } from "@spaceobject/core";
 import { Env } from "../env";
-import { requirePrivyUser } from "../lib/privy-auth";
+import { createPrivyClient } from "../lib/privy";
 import { uploadStorageOutputSchema } from "../schemas/storage";
 
 // Uploads only: the Worker names every pin with a server-generated UUIDv7 —
@@ -31,7 +32,30 @@ const quicknodeUploadSchema = z.object({
 });
 
 export const storageHandlers = new OpenAPIHono<Env>().openapi(uploadStorageRoute, async (c) => {
-  await requirePrivyUser(c);
+  const accessToken = c.req.header("Authorization")?.match(/^Bearer (.+)$/)?.[1];
+  if (!accessToken)
+    throw problemDetails({
+      status: 401,
+      title: "Unauthorized",
+      detail: "A valid Privy access token is required.",
+      type: "Auth",
+    });
+
+  const privy = createPrivyClient(PRIVY_APP_ID, c.env.PRIVY_APP_SECRET);
+
+  const isValid = await privy
+    .utils()
+    .auth()
+    .verifyAccessToken(accessToken)
+    .catch(() => null);
+  if (!isValid)
+    throw problemDetails({
+      status: 401,
+      title: "Unauthorized",
+      detail: "A valid Privy access token is required.",
+      type: "Auth",
+    });
+
   const name = uuidv7();
 
   const bytes = await c.req.arrayBuffer();

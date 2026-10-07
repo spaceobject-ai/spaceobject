@@ -21,6 +21,7 @@
     "@graphql-hive/gateway-runtime": "catalog:",
     "@graphql-mesh/transport-http": "catalog:",
     "@hono/zod-openapi": "catalog:",
+    "@privy-io/node": "catalog:",
     "@spaceobject/core": "workspace:*",
     "@spaceobject/utils": "workspace:*",
     "dataloader": "catalog:",
