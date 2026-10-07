@@ -26,7 +26,7 @@ export async function requestJson<R extends ClientResponse<unknown>>(
   if (response === null)
     throw new CliError(
       "API_REQUEST_FAILED",
-      `Could not reach the Space Object API at ${SPACE_OBJECT_API_URL}.`,
+      `Could not reach the Space Object API at ${API_URL}.`,
       "Check your network connection, then run the command again.",
     );
   if (response.status === 404 && notFound) throw notFound;

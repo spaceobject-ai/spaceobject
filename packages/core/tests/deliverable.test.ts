@@ -76,5 +76,9 @@ test("non-CIDv0 values are rejected by deliverableHashFromCid", () => {
     deliverableHashFromCid("bafkreicouv3sksjuzxb3rbb6rziy6duakk2aikegsmtqtz5rsuppjorxsa"),
   ).toBeNull();
   expect(deliverableHashFromCid("not-a-cid")).toBeNull();
+  // Qm-prefixed but containing characters outside the base58 alphabet
+  // (0, O, I, l): bs58.decode would throw, this must return null instead.
+  expect(deliverableHashFromCid("Qm0OOIIll")).toBeNull();
+  expect(deliverableHashFromCid("Qm invalid base58")).toBeNull();
   expect(deliverableHashFromCid("Qm1")).toBeNull();
 });

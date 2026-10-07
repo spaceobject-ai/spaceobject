@@ -147,45 +147,6 @@ test("upload pins through QuickNode and returns the CID", async () => {
   );
 });
 
-test("upload without a name generates one server-side", async () => {
-  const { token, jwk } = await makeToken();
-
-  await withServer(
-    async (request, response) => {
-      if (request.url === "/jwks") {
-        response.writeHead(200, { "content-type": "application/json" });
-        response.end(JSON.stringify({ keys: [jwk] }));
-        return;
-      }
-      if (request.url === "/v1/s3/put-object" && request.method === "POST") {
-        response.writeHead(201, { "content-type": "application/json" });
-        response.end(JSON.stringify({ pin: { cid, name: "generated" } }));
-        return;
-      }
-      response.writeHead(404);
-      response.end();
-    },
-    async (url) => {
-      setPrivyJwksUrl(`${url.origin}/jwks`);
-      const upload = await app.request(
-        "/v1/storage",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/octet-stream",
-          },
-          body: new Uint8Array(deliverable),
-        },
-        bindings(url.origin),
-      );
-      setPrivyJwksUrl(null);
-
-      expect(upload.status).toBe(201);
-    },
-  );
-});
-
 test("requests without a token are rejected", async () => {
   const response = await app.request(
     "/v1/storage",

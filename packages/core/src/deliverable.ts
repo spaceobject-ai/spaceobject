@@ -41,7 +41,10 @@ export function cidFromDeliverableHash(hash: `0x${string}`): string {
 
 /** Extracts the 32-byte digest from a CIDv0 string (Qm…). */
 export function deliverableHashFromCid(cid: string): `0x${string}` | null {
-  if (!cid.startsWith("Qm")) return null;
+  // bs58.decode throws on characters outside the base58 alphabet (0, O, I, l),
+  // and the Qm prefix alone does not guarantee validity — Qm0… exists. The
+  // charset is checked so this returns null as promised instead of throwing.
+  if (!/^Qm[1-9A-HJ-NP-Za-km-z]+$/.test(cid)) return null;
 
   const bytes = bs58.decode(cid);
   if (bytes.length !== 34) return null;
