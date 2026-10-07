@@ -14,7 +14,6 @@ export type ErrorCode =
   | "WALLET_NOT_FOUND"
   | "WALLET_NOT_ACCESSIBLE"
   | "WALLET_RPC_FAILED"
-  | "NOT_IMPLEMENTED"
   | "AGENT_NOT_FOUND"
   | "AGENT_CARD_INVALID"
   | "AGENT_SERVICE_NOT_FOUND"
@@ -27,7 +26,11 @@ export type ErrorCode =
   | "JOB_INPUT_INVALID"
   | "JOB_ACTION_FAILED"
   | "AMOUNT_INVALID"
-  | "API_REQUEST_FAILED";
+  | "API_REQUEST_FAILED"
+  | "STORAGE_INPUT_INVALID"
+  | "STORAGE_PATH_NOT_FOUND"
+  | "STORAGE_UPLOAD_FAILED"
+  | "STORAGE_DOWNLOAD_FAILED";
 
 export class CliError extends Error {
   readonly code: ErrorCode;

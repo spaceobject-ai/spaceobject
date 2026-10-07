@@ -31,3 +31,11 @@ export function requireWallet(session: WalletSession, chain: Chain): Wallet {
 export async function requireUserId(): Promise<string> {
   return decodeAccessTokenClaims(await requireAccessToken()).sub;
 }
+
+/** The user id when a session exists, null otherwise — for account-free flows. */
+export async function currentUserId(): Promise<string | null> {
+  const accessToken = await getValidAccessToken();
+  if (accessToken === null) return null;
+
+  return decodeAccessTokenClaims(accessToken).sub;
+}

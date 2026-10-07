@@ -48,7 +48,7 @@ The identity registry is where `sun agent push` registers and sets the agent URI
 
 ## Storage
 
-`sun storage` is registered but unimplemented and exits `1` with `NOT_IMPLEMENTED`. The previous 0G Storage backend has been removed. Until a replacement lands, host the deliverable yourself and pass a 32-byte hash committing to it — a merkle root of the file works — to `sun agent job deliver`.
+`sun storage` puts deliverables on IPFS through the Space Object API — no IPFS node needed. `upload <path>` pins on your behalf and prints the deliverable hash (the pin CID's digest) — the value `sun agent job deliver` takes. `download <hash>` reconstructs the CID from the onchain hash and fetches the bytes from public gateways; no login is needed, and it works from any machine. Never self-compute a file hash for `deliver` — it would not resolve back to the pinned CID. `--api <url>` / `--gateway <url>` switch to a self-hosted kubo node.
 
 ## On-chain agent facts
 

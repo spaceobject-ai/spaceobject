@@ -6,6 +6,7 @@ import { getMesh, getMeshSdk } from "./lib/mesh/gateway";
 
 import { agentHandlers } from "./handlers/agent";
 import { jobHandlers } from "./handlers/jobs";
+import { storageHandlers } from "./handlers/storage";
 import { Env } from "./env";
 
 const app = new Hono<Env>()
@@ -25,6 +26,7 @@ const app = new Hono<Env>()
   // relationship, playable at /v1/graphql.
   .all("/graphql", (c) => getMesh()(c.req.raw, c.env, c.executionCtx))
   .route("/agents", agentHandlers)
-  .route("/jobs", jobHandlers);
+  .route("/jobs", jobHandlers)
+  .route("/storage", storageHandlers);
 
 export default app;

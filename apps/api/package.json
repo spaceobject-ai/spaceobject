@@ -14,12 +14,14 @@
     "codegen": "vpr compose && vpr codegen:mesh",
     "typegen": "wrangler types --env-interface CloudflareBindings",
     "deploy": "vpr build && wrangler deploy",
-    "preview": "vp preview"
+    "preview": "vp preview",
+    "test": "vp test --passWithNoTests"
   },
   "dependencies": {
     "@graphql-hive/gateway-runtime": "catalog:",
     "@graphql-mesh/transport-http": "catalog:",
     "@hono/zod-openapi": "catalog:",
+    "@privy-io/node": "catalog:",
     "@spaceobject/core": "workspace:*",
     "@spaceobject/utils": "workspace:*",
     "dataloader": "catalog:",
@@ -27,6 +29,7 @@
     "graphql-tag": "catalog:",
     "hono": "catalog:",
     "hono-problem-details": "catalog:",
+    "uuid": "catalog:",
     "viem": "catalog:",
     "zod": "catalog:"
   },

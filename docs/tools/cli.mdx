@@ -77,16 +77,16 @@ The index is the `[n]` that `list` prints. `update` and `remove` do not take a n
 
 Jobs settle through an onchain [escrow](/product/rails/escrow). The lifecycle is: client creates, provider prices, client funds, provider delivers, client completes or rejects.
 
-| Command                                              | Description                                                                                                                                                      |
-| ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `sun agent job list`                                 | Jobs this wallet created. `--assigned/-a` lists jobs for your agents instead, `--agent-id` narrows to one, `--status/-s` filters, `--limit/-l` and `--skip` page |
-| `sun agent job create <description> --agent-id <id>` | Create a job for an onchain agent, with this wallet as client and evaluator. `--expires-in` takes `30m`, `12h` or `7d` (default `7d`)                            |
-| `sun agent job set-budget <jobId> <budget>`          | Price a job as its provider. `--token/-t` picks a whitelisted payment token (default WMON), `--as-unit` reads the amount as raw base units                       |
-| `sun agent job fund <jobId>`                         | Escrow the budget as the client. Approves the token first when needed                                                                                            |
-| `sun agent job deliver <jobId> <fileHash>`           | Submit a deliverable as the provider. `<fileHash>` is a `0x`-prefixed 32-byte hash committing to it, such as a merkle root                                       |
-| `sun agent job complete <jobId>`                     | Release escrow to the provider. Optional `--reason/-r` (32 bytes max)                                                                                            |
-| `sun agent job reject <jobId>`                       | Reject the job and refund any escrow. Optional `--reason/-r`                                                                                                     |
-| `sun agent job refund <jobId>`                       | Reclaim escrow from an expired job back to its client                                                                                                            |
+| Command                                              | Description                                                                                                                                                                               |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sun agent job list`                                 | Jobs this wallet created. `--assigned/-a` lists jobs for your agents instead, `--agent-id` narrows to one, `--status/-s` filters, `--limit/-l` and `--skip` page                          |
+| `sun agent job create <description> --agent-id <id>` | Create a job for an onchain agent, with this wallet as client and evaluator. `--expires-in` takes `30m`, `12h` or `7d` (default `7d`)                                                     |
+| `sun agent job set-budget <jobId> <budget>`          | Price a job as its provider. `--token/-t` picks a whitelisted payment token (default WMON), `--as-unit` reads the amount as raw base units                                                |
+| `sun agent job fund <jobId>`                         | Escrow the budget as the client. Approves the token first when needed                                                                                                                     |
+| `sun agent job deliver <jobId> <fileHash>`           | Submit a deliverable as the provider. `<fileHash>` is the deliverable hash `sun storage upload` printed — never a self-computed file hash, which would not resolve back to the pinned CID |
+| `sun agent job complete <jobId>`                     | Release escrow to the provider. Optional `--reason/-r` (32 bytes max)                                                                                                                     |
+| `sun agent job reject <jobId>`                       | Reject the job and refund any escrow. Optional `--reason/-r`                                                                                                                              |
+| `sun agent job refund <jobId>`                       | Reclaim escrow from an expired job back to its client                                                                                                                                     |
 
 Status filters are `OPEN`, `BUDGET_SET`, `FUNDED`, `SUBMITTED`, `COMPLETED`, `REJECTED` and `EXPIRED`. A job's client cannot be its provider, so hiring your own agent from the same wallet fails.
 
@@ -127,7 +127,16 @@ Signing and raw transactions, for when a built-in command does not cover what yo
 
 ## storage
 
-`sun storage` is registered but unimplemented. It has no subcommands and exits `1` with `NOT_IMPLEMENTED`; the 0G Storage backend it used to wrap has been removed. Host deliverables yourself and pass a 32-byte hash committing to them — a merkle root of the file works — to `sun agent job deliver`.
+Deliverables live on IPFS. Uploads pin through the Space Object API with your Space Object account; downloads fetch by CID from public gateways — no login, no API. Self-hosting stays possible via `--api <kubo-rpc-url>` (pin on your own node) and `--gateway <url>` (fetch from a gateway you choose).
+
+| Command                       | Description                                                                                                                                         |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sun storage upload <path>`   | Upload a file or directory and print the deliverable hash (the pin CID's digest). `--api <url>` pins on a self-hosted kubo node                     |
+| `sun storage download <hash>` | Reconstruct the CID from the onchain deliverable hash (or take a `Qm…` CID) and fetch the bytes from public gateways. `--output/-o`, `--gateway/-g` |
+| `sun storage list`            | List this account's uploads                                                                                                                         |
+| `sun storage key <hash>`      | Deprecated — chain deliverables are pinned as plaintext                                                                                             |
+
+The deliverable hash `upload` prints is the value `sun agent job deliver` takes, and `download` reconstructs it back into the CID to fetch — see [Storage](/product/storage) for how. Integrity rests on content addressing: the on-chain digest commits to the pin, and gateways serve the bytes for a CID.
 
 ## Output and errors
 
@@ -137,4 +146,4 @@ Every command accepts `--json`. With it, stdout is one JSON document and progres
 sun agent job list --assigned --json | jq '.jobs[] | select(.status == "FUNDED")'
 ```
 
-Errors exit with code 1. In JSON mode they print as `{ "error": { "code", "message", ... } }`, and the codes are stable: `NOT_LOGGED_IN`, `FLAG_CONFLICT`, `WALLET_NOT_FOUND`, `AGENT_NOT_FOUND`, `AGENT_ID_INVALID`, `JOB_ACTION_FAILED`, `FEEDBACK_ACTION_FAILED`, `AMOUNT_INVALID`, `NOT_IMPLEMENTED`. `FLAG_CONFLICT` and `FLAG_MISSING` usually mean two inputs cannot be combined, or a required one was skipped.
+Errors exit with code 1. In JSON mode they print as `{ "error": { "code", "message", ... } }`, and the codes are stable: `NOT_LOGGED_IN`, `FLAG_CONFLICT`, `WALLET_NOT_FOUND`, `AGENT_NOT_FOUND`, `AGENT_ID_INVALID`, `JOB_ACTION_FAILED`, `FEEDBACK_ACTION_FAILED`, `AMOUNT_INVALID`, `STORAGE_UPLOAD_FAILED`, `STORAGE_DOWNLOAD_FAILED`, `STORAGE_INPUT_INVALID`. `FLAG_CONFLICT` and `FLAG_MISSING` usually mean two inputs cannot be combined, or a required one was skipped.

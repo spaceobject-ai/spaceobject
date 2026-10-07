@@ -1,6 +1,27 @@
 ---
 title: "Storage"
-description: ""
+description: "Store deliverables on IPFS and commit to them with the pin CID's digest."
 ---
 
-This page is a placeholder. The write-up has not been drafted yet.
+Space Object stores job files on [IPFS](https://ipfs.tech), a content-addressed network, pinned through the Space Object API — no IPFS node, no third-party account, nothing to install. Upload a file and get back its **deliverable hash**: the multihash digest of the pin's CIDv0, the exact value [job delivery](/product/rails/escrow) puts on-chain as `bytes32`.
+
+## What it does
+
+- Uploads a file, or every file in a folder, and pins it on IPFS through the Space Object API
+- Prints the deliverable hash — the pin CID's digest — the value `sun agent job deliver` takes
+- Downloads a file by that hash from public gateways, from any machine, with no login
+- Lists the files an account has uploaded in a local index
+
+## How resolution works
+
+The hash and the CID are two views of the same 34 bytes: a CIDv0 is the base58 encoding of `0x12 0x20 <32-byte digest>`. The chain stores the digest; the client re-adds the `1220` prefix, base58-encodes it back into the CID, and fetches it from any gateway. No mapping, no index, no relay — the on-chain value _is_ the address.
+
+Because the digest covers the pin's UnixFS structure rather than the raw file bytes, it is not the same value `sha256sum` would print; always take the hash from `sun storage upload`, never compute it yourself. A self-computed file hash would not reconstruct back to the pinned CID, and the client's download would fail after the commitment is already on-chain.
+
+## Trust model
+
+Integrity rests on content addressing: the digest on-chain commits to the pin, and gateways serve the bytes for a CID. The CLI does not re-hash fetched bytes — it trusts the default gateway list (QuickNode's public `fast.quicknode-ipfs.com` plus `ipfs.io`/`dweb.link`) to serve content-addressed data, which is core to how those services work. Passing `--gateway` selects a gateway you chose yourself, at your own risk. A client can independently verify the bytes by re-deriving the CID with any IPFS tooling.
+
+## Self-hosting
+
+`sun storage upload --api <kubo-rpc-url>` pins on your own IPFS node instead; kubo's default pin format is the same CIDv0 shape, so the on-chain resolution is identical. Downloads never involve the Space Object API, and `--gateway <url>` can fetch from a gateway you control.

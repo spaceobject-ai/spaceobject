@@ -1,5 +1,6 @@
 export * from "./api";
 export * from "./chain";
+export * from "./deliverable";
 export * from "./contracts";
 export * from "./network";
 export * from "./privy";

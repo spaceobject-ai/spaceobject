@@ -13,6 +13,7 @@
     "test": "vp test --passWithNoTests"
   },
   "dependencies": {
+    "bs58": "catalog:",
     "viem": "catalog:",
     "zod": "catalog:"
   },
