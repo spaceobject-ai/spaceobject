@@ -4,7 +4,12 @@ import { hc } from "hono/client";
 import type { ClientResponse } from "hono/client";
 import { CliError } from "../utils/errors.ts";
 
-export const api = hc<ApiClientType>(SPACE_OBJECT_API_URL);
+// SUN_API_URL reroutes CLI→API calls to a local Worker (`wrangler dev`) without
+// touching config files; unset means production. The override lives here, at
+// the consumer, so core exports a plain constant.
+export const API_URL = process.env.SUN_API_URL ?? SPACE_OBJECT_API_URL;
+
+export const api = hc<ApiClientType>(API_URL);
 
 type SuccessJson<R> =
   R extends ClientResponse<infer T, infer S, "json"> ? (S extends 200 ? T : never) : never;

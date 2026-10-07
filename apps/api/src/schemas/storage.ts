@@ -6,5 +6,5 @@ import { z } from "zod";
 
 export const uploadStorageOutputSchema = z.object({
   cid: z.string().min(1).describe("IPFS CIDv0 of the pinned bytes"),
-  name: z.string().describe("Pin name (a UUID)"),
+  name: z.string().describe("Pin name (a server-generated UUIDv7)"),
 });

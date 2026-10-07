@@ -1,8 +1,8 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { SPACE_OBJECT_API_URL } from "@spaceobject/core";
 import { z } from "zod";
+import { API_URL } from "./api.ts";
 import { CliError } from "../utils/errors.ts";
 
 // The Space Object gateway is public and content-addressed: downloads fetch
@@ -111,31 +111,28 @@ export async function downloadBytes(cid: string, gatewayOverride?: string): Prom
   return bytes;
 }
 
-// The Space Object API wraps QuickNode for uploads only: bytes pin under a
-// fresh UUID pin name, so re-uploads (including --encrypt re-uploads with new
-// ciphertext) never collide with existing pins. The QuickNode credentials
-// never reach the CLI — only the Privy token every command already carries.
+// The Space Object API wraps QuickNode for uploads only: the Worker names
+// every pin with a server-generated UUID, so re-uploads never collide and the
+// client controls nothing QuickNode-side. The QuickNode credentials never
+// reach the CLI — only the Privy token every command already carries.
 // Downloads do not use the API: the gateway serves bytes by CID, public and
-// content-addressed, and the CLI verifies the sha256 locally.
+// content-addressed.
 export async function uploadDeliverable(
   bytes: Buffer,
   accessToken: string | null,
-  baseUrl: string = SPACE_OBJECT_API_URL,
+  baseUrl: string = API_URL,
 ): Promise<string> {
   if (accessToken === null)
     throw new CliError("NOT_LOGGED_IN", "Not logged in.", "Run `sun auth login`.");
 
-  const response = await fetch(
-    `${baseUrl.replace(/\/+$/, "")}/v1/storage?name=${crypto.randomUUID()}`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/octet-stream",
-      },
-      body: new Uint8Array(bytes),
+  const response = await fetch(`${baseUrl.replace(/\/+$/, "")}/v1/storage`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/octet-stream",
     },
-  ).catch(() => null);
+    body: new Uint8Array(bytes),
+  }).catch(() => null);
   if (response === null || !response.ok)
     throw new CliError(
       "STORAGE_UPLOAD_FAILED",

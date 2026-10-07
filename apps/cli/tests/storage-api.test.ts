@@ -36,7 +36,7 @@ test("uploadDeliverable posts the bytes with a bearer token and returns the CID"
       const result = await uploadDeliverable(Buffer.from("deliverable"), "token", url.origin);
 
       expect(result).toBe(cid);
-      expect(requests[0]).toMatch(/^POST \/v1\/storage\?name=[0-9a-f-]{36} Bearer token$/);
+      expect(requests[0]).toBe("POST /v1/storage Bearer token");
     },
   );
 });

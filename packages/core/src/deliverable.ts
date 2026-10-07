@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import bs58 from "bs58";
 import { z } from "zod";
 
 // The onchain ERC-8183 deliverable is a bytes32 commitment to the work, not a
@@ -30,79 +31,22 @@ export function parseDeliverableHash(value: string): `0x${string}` | null {
 
 // CIDv0 is the base58btc encoding of the bare multihash 0x1220 <digest>.
 const MULTIHASH_PREFIX = "1220";
-const BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-
-function base58Encode(bytes: Uint8Array): string {
-  // Count leading zero bytes, each encoded as a literal "1".
-  let zeros = 0;
-  while (zeros < bytes.length && bytes[zeros] === 0) zeros += 1;
-
-  // Base-256 to base-58 big-integer arithmetic.
-  const digits: number[] = [];
-  for (let index = zeros; index < bytes.length; index += 1) {
-    let carry = bytes[index];
-    for (let position = 0; position < digits.length; position += 1) {
-      carry += digits[position] << 8;
-      digits[position] = carry % 58;
-      carry = Math.floor(carry / 58);
-    }
-    while (carry > 0) {
-      digits.push(carry % 58);
-      carry = Math.floor(carry / 58);
-    }
-  }
-
-  return (
-    "1".repeat(zeros) +
-    digits
-      .reverse()
-      .map((digit) => BASE58_ALPHABET[digit])
-      .join("")
-  );
-}
-
-function base58Decode(value: string): Uint8Array | null {
-  const bytes: number[] = [];
-  for (const char of value) {
-    const digit = BASE58_ALPHABET.indexOf(char);
-    if (digit < 0) return null;
-
-    let carry = digit;
-    for (let position = 0; position < bytes.length; position += 1) {
-      carry += bytes[position] * 58;
-      bytes[position] = carry & 0xff;
-      carry >>= 8;
-    }
-    while (carry > 0) {
-      bytes.push(carry & 0xff);
-      carry >>= 8;
-    }
-  }
-
-  // Leading "1"s are leading zero bytes; the rest is reversed big-endian.
-  const leading = value.length - value.replace(/^1+/, "").length;
-  return Uint8Array.from([...Array(leading).fill(0), ...bytes.reverse()]);
-}
 
 /** Reconstructs the CIDv0 string (Qm…) from an onchain deliverable digest. */
 export function cidFromDeliverableHash(hash: `0x${string}`): string {
   const digest = hash.startsWith("0x") ? hash.slice(2) : hash;
-  const multihash = MULTIHASH_PREFIX + digest;
-  const bytes = new Uint8Array(multihash.length / 2);
-  for (let index = 0; index < bytes.length; index += 1)
-    bytes[index] = Number.parseInt(multihash.slice(index * 2, index * 2 + 2), 16);
 
-  return base58Encode(bytes);
+  return bs58.encode(Buffer.from(MULTIHASH_PREFIX + digest, "hex"));
 }
 
 /** Extracts the 32-byte digest from a CIDv0 string (Qm…). */
 export function deliverableHashFromCid(cid: string): `0x${string}` | null {
   if (!cid.startsWith("Qm")) return null;
 
-  const bytes = base58Decode(cid);
-  if (bytes === null || bytes.length !== 34) return null;
+  const bytes = bs58.decode(cid);
+  if (bytes.length !== 34) return null;
 
-  const hex = [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+  const hex = Buffer.from(bytes).toString("hex");
   if (!hex.startsWith(MULTIHASH_PREFIX)) return null;
 
   return `0x${hex.slice(MULTIHASH_PREFIX.length)}`;

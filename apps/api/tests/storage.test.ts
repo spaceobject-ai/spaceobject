@@ -116,7 +116,7 @@ test("upload pins through QuickNode and returns the CID", async () => {
       if (request.url === "/v1/s3/put-object" && request.method === "POST") {
         uploads.push(String(request.headers["x-api-key"] ?? ""));
         response.writeHead(201, { "content-type": "application/json" });
-        response.end(JSON.stringify({ pin: { cid, name: "uuid-1" } }));
+        response.end(JSON.stringify({ pin: { cid, name: "server-uuid" } }));
         return;
       }
       response.writeHead(404);
@@ -127,7 +127,7 @@ test("upload pins through QuickNode and returns the CID", async () => {
       const testApp = makeApp();
 
       const upload = await testApp.request(
-        "/v1/storage?name=uuid-1",
+        "/v1/storage",
         {
           method: "POST",
           headers: {
@@ -141,7 +141,7 @@ test("upload pins through QuickNode and returns the CID", async () => {
       setPrivyJwksUrl(null);
 
       expect(upload.status).toBe(201);
-      await expect(upload.json()).resolves.toMatchObject({ cid, name: "uuid-1" });
+      await expect(upload.json()).resolves.toMatchObject({ cid });
       expect(uploads).toEqual(["test-key"]);
     },
   );
@@ -188,7 +188,7 @@ test("upload without a name generates one server-side", async () => {
 
 test("requests without a token are rejected", async () => {
   const response = await app.request(
-    "/v1/storage?name=uuid-1",
+    "/v1/storage",
     { method: "POST", body: new Uint8Array(deliverable) },
     bindings("http://127.0.0.1:1"),
   );
@@ -211,7 +211,7 @@ test("an empty body is a 400", async () => {
     async (url) => {
       setPrivyJwksUrl(`${url.origin}/jwks`);
       const response = await app.request(
-        "/v1/storage?name=uuid-1",
+        "/v1/storage",
         {
           method: "POST",
           headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/octet-stream" },

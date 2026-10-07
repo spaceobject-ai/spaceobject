@@ -28,6 +28,7 @@
     "graphql-tag": "catalog:",
     "hono": "catalog:",
     "hono-problem-details": "catalog:",
+    "uuid": "catalog:",
     "viem": "catalog:",
     "zod": "catalog:"
   },
