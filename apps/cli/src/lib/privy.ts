@@ -212,9 +212,11 @@ export const walletSignedTransactionSchema = z.object({
 
 export async function walletRpc(session: WalletSession, walletId: string, body: object) {
   const url = `${PRIVY_AUTH_ORIGIN}${PRIVY_OAUTH_PATH}/wallets/${walletId}/rpc`;
+  // BigInts (EIP-3009 authorization values, chain ids) have no JSON form; EIP-712
+  // integers are read back as decimal strings, so the values sign identically.
   // Round-trip through JSON so the signed payload and the transmitted bytes agree
   // on how absent fields are dropped.
-  const payload = JSON.parse(JSON.stringify(body));
+  const payload = JSON.parse(toJson(body));
 
   const res = await fetch(url, {
     method: "POST",
@@ -243,6 +245,12 @@ export async function walletRpc(session: WalletSession, walletId: string, body: 
     );
 
   return res.json();
+}
+
+function toJson(body: object) {
+  return JSON.stringify(body, (_key, value) =>
+    typeof value === "bigint" ? value.toString() : value,
+  );
 }
 
 // Proves to Privy that the wallet owner authorized this exact request. The
