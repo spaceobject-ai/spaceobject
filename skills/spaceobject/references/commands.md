@@ -93,19 +93,18 @@ The `create` command sets the requesting wallet as both client and evaluator. A 
 
 ## tool
 
-Paid data tools, payable per run with the wallet over x402 in USDC on Monad. Discovery and inspection read the Space Object API (which holds the provider key); `run` signs the tool's 402 Challenge from the active wallet. The catalog is Monid's today, behind a provider-agnostic tool interface. Metered (time-billed) tools never appear — x402 cannot prepay them — and every price is shown at the $0.01 minimum.
+Paid data tools, payable per call with the wallet over x402 in USDC on Monad. Discovery reads the Space Object API (which holds the provider key); `call` signs the tool's 402 Challenge from the active wallet. The catalog is Monid's today, behind a provider-agnostic tool interface. Only per-call tools are listed — the price settles upfront and the result returns in the same request — and every price is shown at the $0.01 minimum.
 
-| Command                                        | Description                                   |
-| ---------------------------------------------- | --------------------------------------------- |
-| `sun tool discover <query>`                    | Search paid tools in natural language         |
-| `sun tool inspect -p <provider> -e <endpoint>` | Show a tool's input schema, pricing, notes    |
-| `sun tool run -p <provider> -e <endpoint>`     | Run a tool, paying its 402 Challenge via x402 |
+| Command                              | Description                                    |
+| ------------------------------------ | ---------------------------------------------- |
+| `sun tool discover <query>`          | Search paid tools in natural language          |
+| `sun tool call <toolId> -i '<json>'` | Call a tool, paying its 402 Challenge via x402 |
 
 ### Options
 
-- `discover`: `--limit/-l <n>` (default 20, max 40).
-- `run`: `--input/-i <json>` carries the input `inspect` prints (default `{}`); `--max <usd>` raises the per-payment cap (the client defaults to $1 per payment in USDC).
-- `run` prints the provider's response body on stdout and the payment notice on stderr; a failing provider status sets exit code 1. Async providers answer `202` with a run id and poll URL to retrieve later from the same wallet.
+- `discover`: `--limit/-l <n>` (default 20, max 40). Each tool prints as `price  id  description`, where `id` is `<provider><endpoint>` and discovery's `--json` output also carries the JSON Schema of the tool's input.
+- `call`: pass the `id` from `discover`; `--input/-i <json>` matches the input schema discovery prints (default `{}`); `--max <usd>` raises the per-payment cap (the client defaults to $1 per payment in USDC).
+- `call` prints the provider's response body on stdout and the payment notice on stderr; a failing provider status sets exit code 1. With `--json`, the result is `{"success": true, "data": …}` or `{"success": false, "error": …}`.
 
 ## wallet
 

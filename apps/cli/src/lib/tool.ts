@@ -16,14 +16,14 @@ import { toWalletAccount } from "./viem.ts";
 // the payment. Discovery goes through the Space Object API instead, which
 // holds the catalog provider's key. The x402 gateway below is Monid's — the
 // catalog wired up today — and moves with the provider.
-const X402_RUN_URL = "https://x402.monid.ai/v1/run";
+const X402_CALL_URL = "https://x402.monid.ai/v1/run";
 
 // CAIP-2 name of the chain the CLI wallet pays from. The gateway also quotes
-// runs on Base mainnet (eip155:8453); the scheme below is registered for Monad
-// only, so those offers are refused rather than paid.
+// calls on Base mainnet (eip155:8453); the scheme below is registered for
+// Monad only, so those offers are refused rather than paid.
 export const MONAD_NETWORK = `eip155:${EVM_CHAIN_IDS.monad}` as const;
 
-export type RunOptions = {
+export type CallOptions = {
   provider: string;
   endpoint: string;
   input: unknown;
@@ -31,57 +31,44 @@ export type RunOptions = {
   maxUsd?: number;
 };
 
-export type RunResult = {
+export type CallResult = {
   status: number;
   ok: boolean;
   body: string;
-  runId: string | null;
-  pollUrl: string | null;
-  /** The run lifecycle status inside the body, e.g. COMPLETED — null when absent. */
-  runStatus: string | null;
   /** The billed price in USD, already floored at the $0.01 minimum. */
   price: string | null;
 };
 
-/** The fields of a run-creation body the CLI reads; everything else passes through untouched. */
-const runBodySchema = z.object({
-  runId: z.string().optional(),
-  pollUrl: z.string().optional(),
-  status: z.string().optional(),
-  hints: z.record(z.string(), z.unknown()).optional(),
+/** The billed price the gateway echoes in its response body, when it does. */
+const callBodySchema = z.object({
   price: z.object({ amount: z.object({ value: z.number() }) }).optional(),
 });
 
 /**
- * POSTs the run to the provider's x402 gateway, settling the 402 Challenge
+ * POSTs the call to the provider's x402 gateway, settling the 402 Challenge
  * from the account's Monad wallet. Signs nothing when the tool is free or
- * refused.
+ * refused. Listed tools are per-call, so the answer carries the result.
  */
-export async function runTool(
+export async function callTool(
   session: WalletSession,
   wallet: Wallet,
-  opts: RunOptions,
-): Promise<RunResult> {
+  opts: CallOptions,
+): Promise<CallResult> {
   const { fetchWithPayment, accepts } = paymentFetch(session, wallet, opts.maxUsd);
 
-  const response = await fetchWithPayment(X402_RUN_URL, {
+  const response = await fetchWithPayment(X402_CALL_URL, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ provider: opts.provider, endpoint: opts.endpoint, input: opts.input }),
   }).catch((error: unknown) => rethrowPaymentFailure(accepts, error));
 
   const body = await response.text();
-  // The body carries the run; parsing is best-effort because a refused request
-  // answers with an error document instead.
-  const data = toRunBody(body);
+  const data = toCallBody(body);
 
   return {
     status: response.status,
     ok: response.ok,
     body,
-    runId: data?.runId ?? null,
-    pollUrl: data?.pollUrl ?? toPollUrl(data?.hints) ?? (data?.runId ? runsUrl(data.runId) : null),
-    runStatus: data?.status ?? null,
     price: data?.price ? displayUsd(data.price.amount.value) : null,
   };
 }
@@ -116,42 +103,28 @@ function rethrowPaymentFailure(accepts: PaymentRequirements[], error: unknown): 
   if (accepts.length > 0 && !networks.includes(MONAD_NETWORK))
     throw new CliError(
       "TOOL_NETWORK_UNSUPPORTED",
-      `The run was quoted on ${networks.join(", ")} only — the Space Object wallet pays on Monad (${MONAD_NETWORK}).`,
+      `The call was quoted on ${networks.join(", ")} only — the Space Object wallet pays on Monad (${MONAD_NETWORK}).`,
     );
 
   const message = error instanceof Error ? error.message : String(error);
   throw new CliError(
     "TOOL_PAYMENT_FAILED",
-    `Could not pay for the run: ${message.split("\n")[0] ?? message}`,
+    `Could not pay for the call: ${message.split("\n")[0] ?? message}`,
     "Check the wallet holds USDC on Monad, or raise the per-payment cap with --max.",
   );
 }
 
-/** Catalog floor: a run quoted under $0.01 is billed, and shown, at $0.01. */
+/** Catalog floor: a call quoted under $0.01 is billed, and shown, at $0.01. */
 export function displayUsd(value: number): string {
   return `$${Math.max(value, 0.01)}`;
 }
 
-/** Reads the run fields out of a response body, tolerating non-JSON error documents. */
-function toRunBody(body: string): z.infer<typeof runBodySchema> | null {
+/** Reads the price out of a response body, tolerating non-JSON error documents. */
+function toCallBody(body: string): z.infer<typeof callBodySchema> | null {
   try {
-    const parsed = runBodySchema.safeParse(JSON.parse(body));
+    const parsed = callBodySchema.safeParse(JSON.parse(body));
     return parsed.success ? parsed.data : null;
   } catch {
     return null;
   }
-}
-
-/** Async runs (202) carry the poll URL top-level or inside hints. */
-function toPollUrl(hints: Record<string, unknown> | undefined): string | null {
-  if (!hints) return null;
-  const url = Object.values(hints).find(
-    (value): value is string => typeof value === "string" && value.startsWith("https://"),
-  );
-
-  return url ?? null;
-}
-
-function runsUrl(runId: string) {
-  return `${X402_RUN_URL.replace(/\/run$/, "/runs")}/${runId}`;
 }
