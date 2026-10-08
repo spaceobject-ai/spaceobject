@@ -86,6 +86,7 @@ function bindings(quicknodeUrl: string): Bindings {
     QUICKNODE_IPFS_API_URL: quicknodeUrl,
     QUICKNODE_IPFS_API_KEY: "test-key",
     PRIVY_APP_SECRET: "test-secret",
+    MONID_API_KEY: "",
   };
 }
 

@@ -21,5 +21,22 @@ export {
   listJobsQuerySchema,
 } from "./schemas/jobs";
 export { uploadStorageOutputSchema } from "./schemas/storage";
+// Tool schemas live in core (the provider-agnostic tool interface); the
+// /v1/tools route serves them, so consumers get them from here like the rest.
+export {
+  toolInspectOutputSchema,
+  toolInspectParamsSchema,
+  toolSchema,
+  toolSearchOutputSchema,
+  toolSearchQuerySchema,
+  UNSUPPORTED_TOOL_PRICE_TYPES,
+} from "@spaceobject/core";
+export type {
+  Tool,
+  ToolInspectOutput,
+  ToolInspectParams,
+  ToolSearchOutput,
+  ToolSearchQuery,
+} from "@spaceobject/core";
 
 export type ApiClientType = typeof app;

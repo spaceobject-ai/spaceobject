@@ -7,6 +7,7 @@ interface __BaseEnv_CloudflareBindings {
 	QUICKNODE_IPFS_API_URL: "https://api.quicknode.com/ipfs/rest";
 	QUICKNODE_IPFS_API_KEY: string;
 	PRIVY_APP_SECRET: string;
+	MONID_API_KEY: string;
 }
 declare namespace Cloudflare {
 	interface GlobalProps {
@@ -19,7 +20,7 @@ type StringifyValues<EnvType extends Record<string, unknown>> = {
 	[Binding in keyof EnvType]: EnvType[Binding] extends string ? EnvType[Binding] : string;
 };
 declare namespace NodeJS {
-	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "ERC_8004_SUBGRAPH_URL" | "ERC_8183_SUBGRAPH_URL" | "QUICKNODE_IPFS_API_URL" | "QUICKNODE_IPFS_API_KEY" | "PRIVY_APP_SECRET">> {}
+	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "ERC_8004_SUBGRAPH_URL" | "ERC_8183_SUBGRAPH_URL" | "QUICKNODE_IPFS_API_URL" | "QUICKNODE_IPFS_API_KEY" | "PRIVY_APP_SECRET" | "MONID_API_KEY">> {}
 }
 
 // Begin runtime types

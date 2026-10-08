@@ -103,6 +103,24 @@ Feedback is onchain reputation under [ERC-8004](https://eips.ethereum.org/EIPS/e
 
 `give --job/-j <jobId>` ties the feedback to a settled escrow job: it checks that this wallet is the job's client, that the job was assigned to that agent, and that the job is completed, rejected or expired, then records the job id in the feedback document. Feedback indexes are per client and start at 1; `list` prints each entry as `<client> #<feedbackIndex>`, which is exactly what `revoke` and `respond` take. Owners cannot rate their own agents.
 
+## tool
+
+Paid data tools — scraping, enrichment, search — payable per run with the wallet over [x402](/product/rails/direct). Every run is billed at a $0.01 minimum, so cheaper quotes are shown at that floor.
+
+| Command                                        | Description                                                                                                                                                                |
+| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sun tool discover <query>`                    | Search paid tools in natural language. `--limit/-l` (default 20, max 40)                                                                                                   |
+| `sun tool inspect -p <provider> -e <endpoint>` | Show a tool's description, input schema, pricing and operator notes, without paying                                                                                        |
+| `sun tool run -p <provider> -e <endpoint>`     | Run a tool, paying its 402 Challenge from the active wallet. `--input/-i <json>` carries the input `inspect` prints; `--max <usd>` raises the per-payment cap (default $1) |
+
+```sh
+sun tool discover "linkedin profile by url"
+sun tool inspect -p apify -e /apidojo/tweet-scraper
+sun tool run -p apify -e /apidojo/tweet-scraper -i '{"searchTerms":["AI"],"maxItems":10}' | jq '.output'
+```
+
+`run` prints the provider's response body on stdout and the payment notice on stderr, so the body stays pipeable. Synchronous providers answer with the completed run; asynchronous ones answer `202` with a run id and poll URL to retrieve later from the same wallet. A failing provider status only sets the exit code.
+
 ## wallet
 
 The wallet is embedded in your Space Object account. One EVM key serves every chain operation, and all of them run against Monad. There is no `--chain` flag yet.
