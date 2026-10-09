@@ -56,7 +56,8 @@
             "group": "Rails",
             "pages": ["product/rails/rails", "product/rails/direct", "product/rails/escrow"]
           },
-          "product/storage"
+          "product/storage",
+          "product/tools"
         ]
       },
       {

@@ -1,0 +1,119 @@
+---
+title: "Tools"
+description: "Paid data tools an agent finds in plain language and pays for per call with its wallet."
+---
+
+Tools are paid data services: scraping, enrichment, search. An agent describes what it needs in plain language, gets a ranked list with each price, and calls the one it wants. The call settles over the [direct rail](/product/rails/direct), so payment is a signed x402 authorization from the caller's wallet. No account, no API key, no prepaid balance.
+
+The catalog holds 2,100+ per-call tools across 75+ providers: social data, SERP and scraping, B2B and people enrichment, finance and crypto, real estate and autos, jobs and salaries, weather, news, and more.
+
+## What the domain carries
+
+A tool is defined by what a caller needs, not by who lists it:
+
+- An id, the handle `sun tool call` takes
+- A description, and a relevance score for the query
+- The price of one call, in USD
+- A structured input sketch, one JSON Schema per parameter location (path, query, body), or null when the tool takes no declared input
+
+Callers (the API, the CLI, agents) see only this shape. Provider-specific fields never reach them.
+
+## What is listed
+
+Only per-call tools appear in the catalog. A per-call price settles once, up front, with the result in the same request, which is the only billing x402 can prepay. Metered endpoints and endpoints without published pricing are left out.
+
+Every call is billed at a $0.01 minimum, and the catalog shows prices at that floor, so the listed price is what a call actually costs.
+
+## Catalog
+
+Per-call tools from 75+ providers. The highlights:
+
+**Social and platform data**
+
+- TikHub: social data across TikTok, Douyin, Instagram, YouTube, X/Twitter, Reddit, Weibo, Xiaohongshu, Bilibili, Kuaishou, WeChat, Telegram, and Threads; profiles, posts, comments, search, hot lists, creator analytics (900+ endpoints)
+- Ploid: public profiles, posts, comments
+- Apify: TikTok and Instagram scraping
+
+**Search and scraping**
+
+- Litescrape: Google, Bing, DuckDuckGo search, Google Maps, Yelp, Tripadvisor, App Store reviews, AI Overviews
+- MrScraper: Google search, TikTok, hotel rates and reviews, retail product pages, Google Flights
+- Context.dev: screenshots, HTML, markdown, structured data and product extraction, person enrichment
+- Browserbase and TinyFish: managed browser sessions, web search and fetch
+- Exa, Firecrawl, Search1API, Keenable: page contents, sitemap mapping, pages as markdown
+
+**SEO and marketing**
+
+- DataForSEO: Google, Bing, and Yahoo SERPs, keyword metrics, backlinks, Google Business reviews, app store data (130 endpoints)
+- Trustpilot: company reviews
+
+**Business and people data**
+
+- Hunter: people and company search, work emails, domain finder
+- Apollo and Clay: B2B people and org search, enrichment, job postings
+- ContactOut: email and phone availability, LinkedIn URL from email
+- People Data Labs: person and company enrichment
+- Crunchbase and Fundable: companies, investors, funding rounds
+- The Companies API, Akta, Tendata: company, industry, and trade data
+- Clutch: agency search and reviews
+
+**Jobs and salaries**
+
+- Indeed, Wellfound, Built In, Web3 Career: job search across general, startup, tech, and web3
+- Levels.fyi: salary data, H-1B and internship salaries, benefits
+- Idealist: nonprofit jobs, internships, volunteering
+- Y Combinator: YC companies, founders, partners, jobs
+
+**Finance and crypto**
+
+- Nasdaq: quotes, screener, earnings, SEC filings, options chains
+- Yahoo Finance, MarketBeat, Finviz, StockAnalysis: quotes, insider trades, fundamentals, forecasts
+- SECForm4: insider filings
+- Surf: wallets, DEX trades, prediction markets (Polymarket, Kalshi), exchanges, on-chain SQL, news (105 endpoints)
+- DefiLlama: TVL, yields, stablecoins, bridges, ETF flows (134 endpoints)
+- BlockRun: Polymarket and Kalshi data, crypto ticks, stock prices, LLM inference
+- QuickNode (x402): Solana mainnet RPC
+
+**Real estate and autos**
+
+- Zillow and Homes.com: home search, rents, Zestimate, mortgage rates, agents
+- LoopNet: commercial real estate
+- Carfax, Kelley Blue Book, Cars.com, Edmunds, bid.cars: vehicle history, values, inventory, salvage auctions
+
+**Software and AI catalogs**
+
+- G2, Capterra, GetApp: software reviews, pricing, alternatives
+- Artificial Analysis and LMArena: AI model benchmarks, costs, leaderboards
+
+**Compute, comms, and files**
+
+- Smol Machines: ephemeral Linux machines, run code and commands
+- Saperly: phone numbers, SMS, calls, transcripts
+- AgentMail: disposable inboxes, drafts, custom domains
+- Simple FS: file upload, list, move
+- Suzanne and Magic Hour: text-to-3D models, prompt-to-animation
+
+**News, weather, and misc**
+
+- Gloria and Opoint: news feeds and search
+- X402 Atlas: Google Trends data
+- AccuWeather and Weather Underground: forecasts, conditions, station history
+- AAA Gas Prices: fuel and EV charging prices
+- Vaquill: statutory legal corpus, section text and citations
+- Strale: whois, DNS, email validation, company registries by country, sanctions and KYB checks, SEO audits, and single-call utilities (190+ endpoints)
+- api.kadec0.xyz: 45 single-call utilities; SERP, scrape, enrich, weather, geocode, academic papers, SEC EDGAR, GitHub, CVEs
+
+## The discovery integration
+
+Space Object defines the tool domain and the interfaces around it. The catalog itself comes from [Monid](https://monid.ai), our discovery integration. Monid's catalog is mapped onto the shared tool schemas at the edge, so a provider without a mapping cannot appear, and a second provider can be added later without callers noticing a difference.
+
+Search runs through the Space Object API, which holds the integration key. Calls do not pass through it: the caller's wallet pays the provider's x402 gateway directly.
+
+## Using tools
+
+```sh
+sun tool discover "linkedin profile by url"
+sun tool call apify/apidojo/tweet-scraper -i '{"searchTerms":["AI"],"maxItems":10}'
+```
+
+The [CLI reference](/tools/cli#tool) lists the flags. The error codes are `TOOL_ID_INVALID`, `TOOL_PAYMENT_FAILED` and `TOOL_NETWORK_UNSUPPORTED`.
