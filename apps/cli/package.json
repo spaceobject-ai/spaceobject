@@ -48,6 +48,8 @@
   "dependencies": {
     "@hpke/chacha20poly1305": "catalog:",
     "@hpke/core": "catalog:",
+    "@x402/evm": "catalog:",
+    "@x402/fetch": "catalog:",
     "canonicalize": "catalog:",
     "commander": "catalog:",
     "cross-keychain": "catalog:",

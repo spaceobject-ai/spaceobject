@@ -91,6 +91,21 @@ Names are free-form (`MCP`, `A2A`, `web` are conventions; the values indexers re
 
 The `create` command sets the requesting wallet as both client and evaluator. A job's client cannot be its provider, so a wallet cannot hire its own agent.
 
+## tool
+
+Paid data tools, payable per call with the wallet over x402 in USDC on Monad. Discovery reads the Space Object API (which holds the provider key); `call` signs the tool's 402 Challenge from the active wallet. The catalog is Monid's today, behind a provider-agnostic tool interface. Only per-call tools are listed — the price settles once, upfront, the only billing x402 can prepay — and every price is shown at the $0.01 minimum.
+
+| Command                              | Description                                    |
+| ------------------------------------ | ---------------------------------------------- |
+| `sun tool discover <query>`          | Search paid tools in natural language          |
+| `sun tool call <toolId> -i '<json>'` | Call a tool, paying its 402 Challenge via x402 |
+
+### Options
+
+- `discover`: `--limit/-l <n>` (1-20, default 20). Each tool prints as `price  id  description`, where `id` is `<provider><endpoint>` and discovery's `--json` output also carries the JSON Schema of the tool's input.
+- `call`: pass the `id` from `discover`; `--input/-i <json>` matches the input schema discovery prints (default `{}`); `--max <usd>` raises the per-payment cap (the client defaults to $1 per payment in USDC).
+- `call` prints the provider's response body on stdout and the payment notice on stderr; a failing provider status sets exit code 1. An async run answers `202` with a run id and poll URL — the notice prints the URL to retrieve the completed result from, with the same wallet. With `--json`, the result is `{"success": true, "data": …}` or `{"success": false, "error": …}`.
+
 ## wallet
 
 | Command                                  | Description                                                                                 |

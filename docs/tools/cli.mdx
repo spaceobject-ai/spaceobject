@@ -103,6 +103,22 @@ Feedback is onchain reputation under [ERC-8004](https://eips.ethereum.org/EIPS/e
 
 `give --job/-j <jobId>` ties the feedback to a settled escrow job: it checks that this wallet is the job's client, that the job was assigned to that agent, and that the job is completed, rejected or expired, then records the job id in the feedback document. Feedback indexes are per client and start at 1; `list` prints each entry as `<client> #<feedbackIndex>`, which is exactly what `revoke` and `respond` take. Owners cannot rate their own agents.
 
+## tool
+
+Paid data tools, payable per call with the wallet over [x402](/product/rails/direct). Every call is billed at a $0.01 minimum, so cheaper quotes are shown at that floor. See [Tools](/product/tools) for what the catalog lists and how payment settles.
+
+| Command                              | Description                                                                                                                                                                 |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sun tool discover <query>`          | Search paid tools in natural language. `--limit/-l <n>` caps the page (1-20, default 20)                                                                                    |
+| `sun tool call <toolId> -i '<json>'` | Call a tool, paying its 402 Challenge from the active wallet. `--input/-i <json>` carries the input discovery prints; `--max <usd>` raises the per-payment cap (default $1) |
+
+```sh
+sun tool discover "linkedin profile by url"
+sun tool call apify/apidojo/tweet-scraper -i '{"searchTerms":["AI"],"maxItems":10}' | jq '.output'
+```
+
+`call` prints the provider's response body on stdout and the payment notice on stderr, so the body stays pipeable. Async providers answer `202` with a run id and a poll URL — the notice prints the URL to retrieve the completed result from, signed by the same wallet that paid. A failing provider status only sets the exit code.
+
 ## wallet
 
 The wallet is embedded in your Space Object account. One EVM key serves every chain operation, and all of them run against Monad. There is no `--chain` flag yet.
@@ -146,4 +162,4 @@ Every command accepts `--json`. With it, stdout is one JSON document and progres
 sun agent job list --assigned --json | jq '.jobs[] | select(.status == "FUNDED")'
 ```
 
-Errors exit with code 1. In JSON mode they print as `{ "error": { "code", "message", ... } }`, and the codes are stable: `NOT_LOGGED_IN`, `FLAG_CONFLICT`, `WALLET_NOT_FOUND`, `AGENT_NOT_FOUND`, `AGENT_ID_INVALID`, `JOB_ACTION_FAILED`, `FEEDBACK_ACTION_FAILED`, `AMOUNT_INVALID`, `STORAGE_UPLOAD_FAILED`, `STORAGE_DOWNLOAD_FAILED`, `STORAGE_INPUT_INVALID`. `FLAG_CONFLICT` and `FLAG_MISSING` usually mean two inputs cannot be combined, or a required one was skipped.
+Errors exit with code 1. In JSON mode they print as `{ "error": { "code", "message", ... } }`, and the codes are stable: `NOT_LOGGED_IN`, `FLAG_CONFLICT`, `WALLET_NOT_FOUND`, `AGENT_NOT_FOUND`, `AGENT_ID_INVALID`, `JOB_ACTION_FAILED`, `FEEDBACK_ACTION_FAILED`, `AMOUNT_INVALID`, `TOOL_ID_INVALID`, `TOOL_PAYMENT_FAILED`, `TOOL_NETWORK_UNSUPPORTED`, `STORAGE_UPLOAD_FAILED`, `STORAGE_DOWNLOAD_FAILED`, `STORAGE_INPUT_INVALID`. `FLAG_CONFLICT` and `FLAG_MISSING` usually mean two inputs cannot be combined, or a required one was skipped.
