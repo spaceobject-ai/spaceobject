@@ -36,13 +36,14 @@ export const toolSchema = z.object({
 
 export const toolSearchQuerySchema = z.object({
   q: z.string().min(1).describe("What you need, in natural language"),
+  // The discovery provider (Monid) caps the page at 20 results.
   limit: z.coerce
     .number()
     .int()
     .positive()
-    .max(40)
+    .max(20)
     .default(20)
-    .describe("Maximum number of tools to return")
+    .describe("Maximum number of tools to return (1-20)")
     .meta({ example: 20 }),
 });
 

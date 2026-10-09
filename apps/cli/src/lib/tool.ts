@@ -37,17 +37,23 @@ export type CallResult = {
   body: string;
   /** The billed price in USD, already floored at the $0.01 minimum. */
   price: string | null;
+  /** Set on an async 202 run: fetch the result from here with the paying wallet. */
+  pollUrl: string | null;
 };
 
 /** The billed price the gateway echoes in its response body, when it does. */
 const callBodySchema = z.object({
-  price: z.object({ amount: z.object({ value: z.number() }) }).optional(),
+  runId: z.string().optional(),
+  pollUrl: z.string().optional(),
+  price: z.object({ amount: z.union([z.number(), z.object({ value: z.number() })]) }).optional(),
 });
 
 /**
  * POSTs the call to the provider's x402 gateway, settling the 402 Challenge
  * from the account's Monad wallet. Signs nothing when the tool is free or
- * refused. Listed tools are per-call, so the answer carries the result.
+ * refused. Per-call tools settle in the paying request, but the gateway may
+ * still run one async: a 202 carries a pollUrl to retrieve the result from
+ * with the same wallet (monid.ai/docs/guide/pay-with-x402).
  */
 export async function callTool(
   session: WalletSession,
@@ -69,8 +75,14 @@ export async function callTool(
     status: response.status,
     ok: response.ok,
     body,
-    price: data?.price ? displayUsd(data.price.amount.value) : null,
+    price: data?.price ? displayUsd(priceUsd(data.price)) : null,
+    pollUrl: data?.pollUrl ?? null,
   };
+}
+
+/** The billed price behind either echo shape — Monid has sent both. */
+function priceUsd(price: { amount: number | { value: number } }): number {
+  return typeof price.amount === "number" ? price.amount : price.amount.value;
 }
 
 /**

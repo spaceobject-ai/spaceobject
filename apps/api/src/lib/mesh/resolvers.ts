@@ -17,8 +17,8 @@ const resolveProviderAgentEntityId = (job: { providerAgentId: string }) =>
   job.providerAgentId === "0" ? null : providerAgentEntityId(job.providerAgentId);
 
 // The resolver always fetches this selection: `id` keys the batch response and
-// the rest covers the REST job payload. assignedAgent subfields requested on
-// /v1/graphql beyond this selection resolve to null.
+// the rest covers the REST job payload. assignedAgent subfields requested
+// beyond this selection resolve to null.
 const providerAgentSelection = /* GraphQL */ `
   {
     id

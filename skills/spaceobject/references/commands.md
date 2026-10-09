@@ -93,7 +93,7 @@ The `create` command sets the requesting wallet as both client and evaluator. A 
 
 ## tool
 
-Paid data tools, payable per call with the wallet over x402 in USDC on Monad. Discovery reads the Space Object API (which holds the provider key); `call` signs the tool's 402 Challenge from the active wallet. The catalog is Monid's today, behind a provider-agnostic tool interface. Only per-call tools are listed — the price settles upfront and the result returns in the same request — and every price is shown at the $0.01 minimum.
+Paid data tools, payable per call with the wallet over x402 in USDC on Monad. Discovery reads the Space Object API (which holds the provider key); `call` signs the tool's 402 Challenge from the active wallet. The catalog is Monid's today, behind a provider-agnostic tool interface. Only per-call tools are listed — the price settles once, upfront, the only billing x402 can prepay — and every price is shown at the $0.01 minimum.
 
 | Command                              | Description                                    |
 | ------------------------------------ | ---------------------------------------------- |
@@ -102,9 +102,9 @@ Paid data tools, payable per call with the wallet over x402 in USDC on Monad. Di
 
 ### Options
 
-- `discover`: `--limit/-l <n>` (default 20, max 40). Each tool prints as `price  id  description`, where `id` is `<provider><endpoint>` and discovery's `--json` output also carries the JSON Schema of the tool's input.
+- `discover`: `--limit/-l <n>` (1-20, default 20). Each tool prints as `price  id  description`, where `id` is `<provider><endpoint>` and discovery's `--json` output also carries the JSON Schema of the tool's input.
 - `call`: pass the `id` from `discover`; `--input/-i <json>` matches the input schema discovery prints (default `{}`); `--max <usd>` raises the per-payment cap (the client defaults to $1 per payment in USDC).
-- `call` prints the provider's response body on stdout and the payment notice on stderr; a failing provider status sets exit code 1. With `--json`, the result is `{"success": true, "data": …}` or `{"success": false, "error": …}`.
+- `call` prints the provider's response body on stdout and the payment notice on stderr; a failing provider status sets exit code 1. An async run answers `202` with a run id and poll URL — the notice prints the URL to retrieve the completed result from, with the same wallet. With `--json`, the result is `{"success": true, "data": …}` or `{"success": false, "error": …}`.
 
 ## wallet
 

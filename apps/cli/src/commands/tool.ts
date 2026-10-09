@@ -20,7 +20,7 @@ const discover = zodCommand({
     query: z.string().describe("What you need, in natural language"),
   },
   opts: {
-    limit: z.coerce.number().int().positive().max(40).prefault(20).describe("l;Maximum results"),
+    limit: z.coerce.number().int().positive().max(20).prefault(20).describe("l;Maximum results"),
   },
   action: async (args, opts) => {
     const json = isJson(discover);
@@ -107,7 +107,7 @@ const call = zodCommand({
     }
 
     const payload = toCallPayload(result.body);
-    ok(typeof payload === "string" ? result.body : "", { success: true, data: payload })(json);
+    ok(result.body, { success: true, data: payload })(json);
   },
 });
 
@@ -139,7 +139,14 @@ function receipt(result: Awaited<ReturnType<typeof callTool>>): string {
   const paid = result.price
     ? `Paid ${result.price} via x402 on Monad`
     : "Settled via x402 on Monad";
-  return [success(paid), pc.dim(`HTTP ${result.status}`)].join("\n");
+  // An async run answers 202 with a poll URL: the payment settled, the result
+  // comes from a later signed GET (monid.ai/docs/guide/pay-with-x402).
+  const note = result.pollUrl
+    ? pc.dim(
+        `HTTP 202 — run accepted; retrieve the result from ${result.pollUrl} with the same wallet`,
+      )
+    : pc.dim(`HTTP ${result.status}`);
+  return [success(paid), note].join("\n");
 }
 
 /** The failed-call error text: the provider's body says why when it speaks. */

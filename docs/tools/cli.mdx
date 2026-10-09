@@ -107,19 +107,17 @@ Feedback is onchain reputation under [ERC-8004](https://eips.ethereum.org/EIPS/e
 
 Paid data tools — scraping, enrichment, search — payable per run with the wallet over [x402](/product/rails/direct). Every run is billed at a $0.01 minimum, so cheaper quotes are shown at that floor.
 
-| Command                                        | Description                                                                                                                                                                |
-| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `sun tool discover <query>`                    | Search paid tools in natural language. `--limit/-l` (default 20, max 40)                                                                                                   |
-| `sun tool inspect -p <provider> -e <endpoint>` | Show a tool's description, input schema, pricing and operator notes, without paying                                                                                        |
-| `sun tool run -p <provider> -e <endpoint>`     | Run a tool, paying its 402 Challenge from the active wallet. `--input/-i <json>` carries the input `inspect` prints; `--max <usd>` raises the per-payment cap (default $1) |
+| Command                              | Description                                                                                                                                                                 |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sun tool discover <query>`          | Search paid tools in natural language. `--limit/-l <n>` caps the page (1-20, default 20)                                                                                    |
+| `sun tool call <toolId> -i '<json>'` | Call a tool, paying its 402 Challenge from the active wallet. `--input/-i <json>` carries the input discovery prints; `--max <usd>` raises the per-payment cap (default $1) |
 
 ```sh
 sun tool discover "linkedin profile by url"
-sun tool inspect -p apify -e /apidojo/tweet-scraper
-sun tool run -p apify -e /apidojo/tweet-scraper -i '{"searchTerms":["AI"],"maxItems":10}' | jq '.output'
+sun tool call apify/apidojo/tweet-scraper -i '{"searchTerms":["AI"],"maxItems":10}' | jq '.output'
 ```
 
-`run` prints the provider's response body on stdout and the payment notice on stderr, so the body stays pipeable. Synchronous providers answer with the completed run; asynchronous ones answer `202` with a run id and poll URL to retrieve later from the same wallet. A failing provider status only sets the exit code.
+`call` prints the provider's response body on stdout and the payment notice on stderr, so the body stays pipeable. Async providers answer `202` with a run id and a poll URL — the notice prints the URL to retrieve the completed result from, signed by the same wallet that paid. A failing provider status only sets the exit code.
 
 ## wallet
 
@@ -164,4 +162,4 @@ Every command accepts `--json`. With it, stdout is one JSON document and progres
 sun agent job list --assigned --json | jq '.jobs[] | select(.status == "FUNDED")'
 ```
 
-Errors exit with code 1. In JSON mode they print as `{ "error": { "code", "message", ... } }`, and the codes are stable: `NOT_LOGGED_IN`, `FLAG_CONFLICT`, `WALLET_NOT_FOUND`, `AGENT_NOT_FOUND`, `AGENT_ID_INVALID`, `JOB_ACTION_FAILED`, `FEEDBACK_ACTION_FAILED`, `AMOUNT_INVALID`, `STORAGE_UPLOAD_FAILED`, `STORAGE_DOWNLOAD_FAILED`, `STORAGE_INPUT_INVALID`. `FLAG_CONFLICT` and `FLAG_MISSING` usually mean two inputs cannot be combined, or a required one was skipped.
+Errors exit with code 1. In JSON mode they print as `{ "error": { "code", "message", ... } }`, and the codes are stable: `NOT_LOGGED_IN`, `FLAG_CONFLICT`, `WALLET_NOT_FOUND`, `AGENT_NOT_FOUND`, `AGENT_ID_INVALID`, `JOB_ACTION_FAILED`, `FEEDBACK_ACTION_FAILED`, `AMOUNT_INVALID`, `TOOL_ID_INVALID`, `TOOL_PAYMENT_FAILED`, `TOOL_NETWORK_UNSUPPORTED`, `STORAGE_UPLOAD_FAILED`, `STORAGE_DOWNLOAD_FAILED`, `STORAGE_INPUT_INVALID`. `FLAG_CONFLICT` and `FLAG_MISSING` usually mean two inputs cannot be combined, or a required one was skipped.
