@@ -27,6 +27,9 @@
   --color-chart-3: var(--chart-3);
   --color-chart-2: var(--chart-2);
   --color-chart-1: var(--chart-1);
+  --color-eclipse-deep: var(--eclipse-deep);
+  --color-eclipse-soft: var(--eclipse-soft);
+  --color-eclipse: var(--eclipse);
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -57,6 +60,28 @@
   --font-mono: "Geist Mono Variable", monospace;
 }
 
+@theme {
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  --animate-rise: rise 520ms var(--ease-out) both;
+  --animate-marquee: marquee 80s linear infinite;
+  --animate-orbit: spin 90s linear infinite;
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(24px);
+    }
+  }
+
+  @keyframes marquee {
+    to {
+      transform: translateX(-50%);
+    }
+  }
+}
+
 :root {
   --background: oklch(1 0 0);
   --foreground: oklch(0.141 0.005 285.823);
@@ -81,6 +106,9 @@
   --chart-3: oklch(0.541 0.281 293.009);
   --chart-4: oklch(0.491 0.27 292.581);
   --chart-5: oklch(0.432 0.232 292.759);
+  --eclipse: oklch(0.64 0.2 292);
+  --eclipse-soft: oklch(0.76 0.11 292);
+  --eclipse-deep: oklch(0.38 0.13 292);
   --radius: 0.625rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.141 0.005 285.823);
@@ -133,5 +161,16 @@
 
   body {
     @apply m-0 bg-background font-sans text-foreground antialiased;
+  }
+
+  html,
+  body {
+    overflow-x: clip;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
   }
 }
