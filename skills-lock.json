@@ -109,6 +109,12 @@
       "skillPath": "skills/productivity/grilling/SKILL.md",
       "computedHash": "4dd886b0196bf43729d954ae326016f2bd9f5f79d892500b407c33a753362f14"
     },
+    "hallmark": {
+      "source": "nutlope/hallmark",
+      "sourceType": "github",
+      "skillPath": "skills/hallmark/SKILL.md",
+      "computedHash": "579f86b27cdd7eb972107f7aecedd537f472891c5fd7c7c821bea15f64e0fe86"
+    },
     "handoff": {
       "source": "mattpocock/skills",
       "sourceType": "github",
@@ -150,6 +156,18 @@
       "sourceType": "github",
       "skillPath": "skills/engineering/improve-codebase-architecture/SKILL.md",
       "computedHash": "2449db6ab1ded9581f69fcc56c1f64818112d05e271fd4c5da23c6523f9d3d9d"
+    },
+    "landing-page-copywriter": {
+      "source": "OneWave-AI/claude-skills",
+      "sourceType": "github",
+      "skillPath": "landing-page-copywriter/SKILL.md",
+      "computedHash": "fd52f85e551796cfb21bea0996535fafeda7559fb6c3c5d61482ad56fbd44f30"
+    },
+    "landing-page-optimizer": {
+      "source": "OneWave-AI/claude-skills",
+      "sourceType": "github",
+      "skillPath": "landing-page-optimizer/SKILL.md",
+      "computedHash": "dc745937b4796fd91da760a7fe955a841904015d51ebdb7e6c8e4491dbfef612"
     },
     "migrate-to-shoehorn": {
       "source": "mattpocock/skills",
